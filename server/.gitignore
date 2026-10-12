@@ -1,0 +1,4 @@
+# Java files
+.gradle/
+.kotlin/
+build/

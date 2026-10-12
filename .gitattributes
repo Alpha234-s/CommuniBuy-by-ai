@@ -1,0 +1,19 @@
+#
+# https://help.github.com/articles/dealing-with-line-endings/
+#
+
+# Other files should use lf
+*    text=auto eol=lf encodding=utf-8
+
+# Windows script files should use crlf
+*.bat    text eol=crlf encodding=gbk
+
+# Binary files should be left untouched
+*.jar    binary
+*.so    binary
+*.o    binary
+*.out    binary
+*.dll    binary
+*.lib    binary
+*.exe    binary
+

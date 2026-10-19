@@ -15,7 +15,7 @@
 
 每阶段必须编译、实际测试、文档、diff与自审通过才标完成。关键验证受阻时保持待验证，仅推进不依赖该验证的准备工作。每阶段提交后在本表记录证据与提交；自审不冒充另一位人工开发者评审。
 
-## 要求—实现—验收矩阵
+## 开始实施时的基线要求—实现—验收矩阵（最终状态见final-acceptance.md）
 
 | 要求 | 当前实现位置/缺口 | 验收方式 |
 | --- | --- | --- |
@@ -94,3 +94,13 @@
 自审/测试发现：Security存在MVC的第二个CorsConfigurationSource导致自动选择不到自定义源，允许预检403；改为明确注入自定义cors。SpringBootTest默认关闭观测导致Prometheus404，专项用AutoConfigureObservability打开真实registry，而不是放宽HTTP断言。审计成功写失败CHECK测试证明业务库存/订单全部回滚。失败审计不存敏感参数，独立事务故障不覆盖原异常。限流可控Clock、伪造转发头、每用户隔离、权限及CORS通过。
 
 当前JAR完整commerce-demo再次通过。读取压测先写performance-plan.md，再运行200商品/8并发/400次/20预热：537.1096请求/秒，P95 20.4838ms，P99 47.3077ms，0错误，达到预设P95≤250ms/吞吐≥30/错误0。原始硬件、时间、JAR哈希与结果见evidence/performance.json；只是本机读取样本，不承诺生产容量或写吞吐。CI已增加格式/编译、全套MySQL、严格发现数量、JaCoCo、完整JAR演示及压测，远程Actions尚未实际执行，不记为通过。没有Docker命令，容器验证保持阶段6待验证。
+
+## 阶段6本地验收与自审（容器/远程CI待验证）
+
+阶段5提交8243529。阶段6新增非root Dockerfile、Compose应用/代理、Nginx HTTP与HTTPS模板、数据库备份恢复脚本、部署命令/权限ER图状态图/最终矩阵。脚本Python编译通过；Java全量build再次77项0失败/跳过，JaCoCo1197/119行、467/164分支。补审计响应专用DTO/camelCase及回归，避免数据库字段成为API契约；首次运维探测发现原Map下划线字段后修复，不是调整测试忽略差异。
+
+任务专用新建schema实际空库V1→V6启动、bootstrap独立随机管理员、受保护health/metrics/OpenAPI、HTTP trace与审计关联通过；先运行完整商城脚本产生3订单/2支付/1退款/3评价/3结算批次，再停写mysqldump并恢复到另一个预建空库。所有18表行数及订单明细、支付997分/退款498分/内部结算499分一致。deploy配置恢复库启动成功，阶段5理解V6的上一JAR回退读取且数据不变；再次向非空目标恢复被拒绝。原始脱敏证据evidence/deployment.json；SQL备份、凭据仅任务私有work目录，不交付。这里没有证明任意旧版本可回退或生产库升级。
+
+本机Docker不存在，访问Docker Registry也连接拒绝；不能称本地容器已运行。官方Gradle8.14.3 SHA256可读取，Wrapper已配置分发校验。个人fork已上传且逐tree校验一致；团队库创建Draft PR被GitHub集成403拒绝，个人fork Draft PR #1创建并附到本聊天，Actions run39256869955实际进行中。等待Linux/MySQL/容器CI，阶段6仍保留待验证。无域名/证书，公网TLS只能提供准确部署步骤，未验收。
+
+自审：不将TCP探活当数据库健康；不把模拟叫真实沙箱；备份恢复包含非空账务数据；restore禁止覆盖源库/非空库且无DROP；Docker context仅复制验收JAR，不含.env；代理不记录原始URI/查询；明确V4/V5前写版本不能回退。没有外部人工评审，后续需维护者评审。

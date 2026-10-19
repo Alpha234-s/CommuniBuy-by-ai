@@ -1,0 +1,39 @@
+# 企业商城验收矩阵（按实际证据更新）
+
+本轮从7052ee7已有修复增量实施，没有覆盖已有认证/库存测试；上游main核对为e2991cd。分支feat/backend-enterprise。上一轮verification.md不是本轮结果。本报告与progress.md一起维护，未验证项不能算通过。
+
+| 课程要求 | 代码/设计证据 | 验收证据/状态 |
+| --- | --- | --- |
+| 构建、跨平台Wrapper、标准可执行JAR | server/build.gradle、app/build.gradle、gradlew/.bat、锁文件 | JDK21 build实际通过；新JAR启动通过；Linux CI结果后补 |
+| 统一DTO/错误/校验/分页/OpenAPI | dto/Dtos、commerce/CommerceDtos、finance/FinanceDtos、ApiErrors、OpenApiConfig | BackendIntegrationTest正常/边界/异常/无泄密；Reliability审计DTO；管理员OpenAPI实际可读 |
+| traceId与日志脱敏 | TraceFilter、AuditAspect、AuditSink | 伪造trace不反射、日志不含测试秘密、HTTP→审计一致；evidence/deployment.json |
+| 认证与隐私 | SecurityConfig、AuthService、UserService | AuthPolicy1+Backend相关测试，伪造/缺声明/过期/注销/改密/封禁、越权、角色竞争、无密码；全部通过 |
+| 库存事务与并发 | ItemService、OrderService、OrderLines | 最后一件、相同键、跨商品键、更新竞争、创建CHECK失败回滚、取消/付款/超时竞争；真实MySQL+CountDownLatch+可控Clock |
+| 数据迁移/旧明文/历史身份 | V1～V6、database/design.md | Migration3：空库、旧SQL和旧JPA宽度；原型baseline保留数据；不清库、不造历史归属 |
+| 分类搜索/购物车/拆单 | ShopService、ShopController、V4 | Commerce9：多条件、分页权限、选中清理、价格/版本、跨卖家失败全回滚、并发重试/最后库存 |
+| 支付记录/查询/通知 | FinanceBook、PaymentChannel、SimulatorChannel、SimulatorCallbacks | Finance18中验证验签/金额/商户/事件冲突/失败重试/主动查询/取消竞争；SIMULATOR通过，真实平台沙箱未实现/未验收 |
+| 退款/评价/结算/统计 | FinanceService、OrderService、AdminService、V5 | 全额审核重试、库存一次恢复、零价退款、评价唯一、结算竞争/调整、超Long平台金额精确；HTTP完整闭环通过 |
+| 限流/CORS/监控/审计/输入安全 | RequestLimitFilter、CorsConfig、AuditController、Actuator、V6 | Reliability7全部通过；真实JAR health/metrics/trace可读，普通用户拒绝；纯文本拒绝及参数化搜索 |
+| 依赖/静态检查/覆盖报告/CI | Gradle锁、formatCheck、unchecked-Werror、backend.yml | 本地build与格式检查通过；JaCoCo生成；远程Actions正在验收，不能预填成功 |
+| 性能目标与测量 | scripts/load-test.py、performance-plan.md | 原始evidence/performance.json：预设P95≤250ms/≥30rps/0错误；本地实测20.48ms/537.11rps/0，单读取样本，不推断生产容量 |
+| 容器/代理/HTTPS | Dockerfile、compose.yml、deploy/nginx*.conf | 本地无Docker；待远程CI实际构建/运行验证；无域名证书，公网HTTPS待部署者验收 |
+| 新环境、备份恢复、兼容回退 | scripts/database-copy.py、deployment.md | 原生MySQL8.4.6实际演练，见evidence/deployment.json；恢复有3订单/2支付/1退款/3结算批次，金额997/498/499，非空目标拒绝 |
+| AI开发过程与协作 | ai-development-log.md、progress.md、阶段提交 | 真实Prompt来源摘要、生成/采纳/修正/验证记录；没有可确认的外部人工评审，缺失历史明确标注 |
+
+## 当前测试与结果
+
+本地命令（在server；无Docker测试环境变量见README）：`./gradlew formatJava build`（修改代码后）或`./gradlew clean build --no-daemon`，Windows对应gradlew.bat；随后`python3 scripts/check-tests.py`。最终代码本地77项，0失败/错误/跳过：AuthPolicy1、Backend39、Commerce9、Finance18、Migration3、Reliability7。测试使用原生MySQL8.4.6任务专用库；不使用H2，不用Mock替代库存/锁/迁移。故障注入仅渠道端口或数据库临时CHECK，时间用Clock、竞争用latch，无sleep制造并发。
+
+当前JaCoCo实际LINE1197覆盖/119未覆盖（90.96%）、BRANCH467/164（74.01%）。未覆盖含bootstrap配置分支、禁用渠道、审计存储双重失败告警、部分防御性配置/容量边界及框架生成代码。核心成功、拒绝、回滚、并发行为有专项断言；不把覆盖率解释为生产安全保证。报告在app/build/reports/jacoco/test/html/index.html，测试HTML/XML在app/build/reports/tests/test和app/build/test-results/test。
+
+运行命令与逐步演示、备份、恢复、回退均见[deployment.md](deployment.md)。本轮真实JAR演示不仅是MockMvc：购物车→两卖家拆单→模拟支付→发货收货→评价→内部结算→全额售后→负数调整，以及403/取消只回补一次/注销401。恢复前后全部表行数、订单明细合计和支付/退款/结算金额比较一致，V6兼容上一JAR启动后数据不变；不声称旧单商品二进制可回退。
+
+## 明确未完成与风险
+
+- 真实支付平台沙箱无凭据，当前PaymentChannel只有隔离SIMULATOR/禁用实现。真实网络超时、外部资金晚到自动退款、真实通知与银行结算均未验收。模拟晚到通知409待对账，不能复活订单；deploy禁用模拟。
+- 售后仅每单一次全额申请；拒绝后不重开，不做部分退款、退货物流、多地址簿、短信/邮件找回、附件上传或实际银行打款。前端尚未联调且没有修改，适配见design-api.md。
+- 限流是单实例固定分钟窗口，重启清零；账务单行锁适合课程规模，不承诺高并发写容量。监控令牌需轮换，未部署长期Prometheus/Grafana；吊销/审计归档待部署者配置。
+- 本地没有Docker/公网域名证书；容器/代理由远程CI继续验证，公网TLS、云MySQL和真实共享历史数据升级仍需维护者部署演练。逻辑备份仅本项目全InnoDB结构，执行期间禁止DDL。
+- 团队库创建Draft PR返回GitHub集成403 Resource not accessible by integration。个人fork Draft PR #1可评审且不自动合并；它不替代团队PR。团队维护者可从fork分支手工创建上游Draft PR，或导入交付bundle。外部人工评审未进行。
+
+提交阶段记录：bf3f19d/861864f基础，21e210c安全，21cda73快照，469c7ee购物车拆单，fa4cb36账务，8243529可靠性；后续部署与最终证据提交见progress.md和git log。通过GitHub git-data上传时逐个核对远端tree与本地一致；远端提交ID因父链元数据不同，映射留在交付报告。

@@ -48,6 +48,12 @@ jobs:
           trap 'kill "$app_pid" || true; docker compose down' EXIT
           python3 scripts/commerce-demo.py --wait-seconds 90
           python3 scripts/load-test.py --output app/build/performance.json --jar app/build/libs/communibuy.jar
+          kill "$app_pid"
+          wait "$app_pid" || true
+          docker compose --profile proxy up -d --build --wait
+          python3 scripts/commerce-demo.py --base-url http://127.0.0.1:8088/api/v1 --wait-seconds 90
+          docker compose exec -T proxy nginx -t
+          docker compose exec -T app id
       - uses: actions/upload-artifact@v4
         if: always()
         with:

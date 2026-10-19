@@ -104,3 +104,8 @@ python3 scripts/demo.py
 响应新增code与traceId，`X-Trace-Id`用于排障；管理员可获取`/v3/api-docs`，UI默认关闭。JaCoCo报告位于`app/build/reports/jacoco/test/html/index.html`，完整依赖锁为`app/gradle.lockfile`。新增/升级依赖需执行`./gradlew build --write-locks`并提交锁文件，不能只修改版本声明。
 
 阶段、提交、自审、准确测试数量和限制见[进度记录](../documents/server/progress.md)，AI过程见[真实开发记录](../documents/server/ai-development-log.md)。原先验收记录是上一轮交付，不冒充本轮新增商城验收。
+
+
+## 完整部署与最终验收
+
+[deployment.md](../documents/server/deployment.md)提供JAR/完整Compose/代理/HTTPS、独立管理员初始化、备份恢复及V6兼容回退命令；[final-acceptance.md](../documents/server/final-acceptance.md)区分真实验证与未完成项。完整模拟商城用commerce-demo.py，原demo.py保留兼容验证。Dockerfile只复制已验收JAR、UID10001运行，镜像不含.env。默认Compose只启动数据库，`docker compose --profile proxy up -d --build --wait`才启应用和本地代理；无需也不得清除现有卷。

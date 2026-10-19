@@ -93,7 +93,11 @@ class ReliabilityIntegrationTest extends IntegrationSupport {
                 Long.class))
         .isEqualTo(1);
     request("buyer", "GET", "/api/v1/audit", null).andExpect(status().isForbidden());
-    request("admin", "GET", "/api/v1/audit", null).andExpect(status().isOk());
+    request("admin", "GET", "/api/v1/audit", null)
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.content[0].traceId").isString())
+        .andExpect(jsonPath("$.data.content[0].actorHash").isString())
+        .andExpect(jsonPath("$.data.content[0].trace_id").doesNotExist());
   }
 
   @Test

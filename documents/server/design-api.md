@@ -37,6 +37,8 @@ UserView 仅 `{id,nickname,description,address,role}`，role=-1 封禁/0 普通/
 
 name 非空且不超过128，description 最多10000，price 0..2147483647，stock 同范围。免费商品合法。status **仅 -1 下架、0 上架**，不再编码发货次数。响应 `shipmentCount` 独立统计已执行的订单发货次数。
 
+商品name/description、用户nickname/description及评价为纯文本，拒绝尖括号；前端用textContent显示。分页、整数及字符串长度不合法返回400。
+
 startTime 默认服务端现在且 >=0；endTime 为 null 时无限，更新时 -1 表示清除截止时间，给定截止时间必须大于开始时间。购买窗口 `[startTime,endTime)`。
 
 ItemView：`{id,name,description,price,stock,status,owner,startTime,endTime,shipmentCount,version}`。修改绝对剩余库存必须发送**最近一次读取的 version**；版本陈旧或缺失为409，前端刷新后重新决定库存。下单、回补、发货和商品更新都会更新版本。剩余库存加尚可取消的预留库存不得超出 INT 容量。下架不自动取消已存在订单。商品不物理删除，显式修改 `status:-1` 关闭销售。
@@ -126,3 +128,11 @@ OrderView新增itemName、itemDescription、snapshotSource（AT_CREATION/LEGACY_
 `POST /payments/simulator/notify`、`POST /refunds/simulator/notify`只在显式启用模拟模式时注册。JSON为`{id,eventId,amount,merchant,status}`，status=SUCCEEDED或FAILED；头`X-Channel-Signature`为64位小写hex HMAC-SHA256。签名原文按字段规范化为`id|eventId|amount|merchant|status`，密钥为独立PAYMENT_SIM_SECRET的Base64解码随机字节，不能复用真实平台凭据。
 
 先验签，再校验本地记录的商户/金额、批准状态与事件唯一性。同eventId相同参数重复确认，冲突409。支付和退款各自事件空间独立。过期/已取消未支付订单收到成功通知返回409待对账，不能复活订单；本版没有真实晚到资金自动退回能力，接真实渠道前必须实现相应补偿。没有外部凭据，因此不声称真实渠道通知/网络故障已验收。
+
+## 可靠性新增契约
+
+响应在原success/message/data之外增加code（成功OK）和32位traceId，响应头X-Trace-Id一致；客户端不要提交身份/状态/服务端时间。429为RATE_LIMITED并带Retry-After。CORS允许源必须环境明确列出，默认不开放，Bearer不使用Cookie。
+
+ADMIN `GET /audit?page=0&size=20`：分页`{id,createTime,traceId,actorHash,action,resourceHash,outcome,httpStatus}`，哈希字段不是明文账号或地址。Actuator独立沿用标准响应而非Api envelope，全部要求ADMIN；自动OpenAPI也为标准OpenAPI格式。失败CORS预检由框架403拒绝，不含业务对象。监控与限制见[运行说明](operations.md)。
+
+前端增量适配：购物车保留version并按卖家展示checkout返回的orders/lines；幂等重试沿用原cartVersion和幂等键。支付页显示SIMULATOR且查询独立支付记录，不由客户端提交成功标志；售后和结算分别展示独立记录、FAILED重试及负数调整。大金额使用保留整数精度的JSON解析，不能用Number累加超过2^53的账务。401重新登录、409刷新业务数据、429按Retry-After重试，排障向维护者提供traceId；不展示服务器内部异常。

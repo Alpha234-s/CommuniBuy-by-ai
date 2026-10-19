@@ -21,4 +21,6 @@ python3 scripts/check-tests.py   # 核实测试发现和零跳过
 
 上游更新时先确认工作区状态，再fetch并合并upstream/main；逐项解决冲突，保留双方意图，不整文件覆盖已有修复。前端不在后端任务默认范围，变更前需获得相应范围授权。
 
-本次任务记录与验收：[backend-hardening.md](../documents/server/backend-hardening.md)、[verification.md](../documents/server/verification.md)。
+当前企业商城任务的状态与验收：[progress.md](../documents/server/progress.md)、[最终矩阵](../documents/server/final-acceptance.md)。backend-hardening.md/verification.md是上一轮证据，不代替当前测试结果。真实AI记录见ai-development-log.md，不得伪造外部人工评审或历史Prompt。
+
+Java源统一google-java-format1.28.0：`./gradlew :app:formatJava`后再`./gradlew build`，CI的formatCheck只检查不自动改源码；unchecked警告视为错误。所有数据库版本通过新增Flyway迁移，不回写旧版本。测试当前至少77项且关键suite必须存在，脚本同时检查零失败/错误/跳过；增加测试后同步门槛，不得为掩盖失败降低门槛。JaCoCo报告说明未覆盖的核心分支，不用数字替代事务/权限/并发断言。部署与备份演练见deployment.md。

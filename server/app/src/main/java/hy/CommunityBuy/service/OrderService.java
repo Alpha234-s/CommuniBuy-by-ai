@@ -60,6 +60,8 @@ public class OrderService {
         try { total=Math.multiplyExact((long)i.getPrice(),r.quantity().longValue()); }
         catch (ArithmeticException e) { throw BusinessException.bad("Order amount overflow"); }
         i.setStock(i.getStock()-r.quantity());
+        // Persist the reservation inside this transaction before the order INSERT; an INSERT failure must undo it.
+        items.flush();
         var o=new Order(); o.setItemId(i.getId()); o.setUserId(a.id()); o.setOwnerId(i.getOwnerId());
         o.setQuantity(r.quantity()); o.setPrice(i.getPrice()); o.setTotal(total); o.setAddress(r.address());
         o.setStatus(0); o.setCreateTime(now); o.setExpiresAt(Math.addExact(now,timeout));

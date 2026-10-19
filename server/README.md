@@ -16,9 +16,11 @@ docker compose up -d --wait
 Compose 自动读取 `.env`；Java/Gradle 不会自动读取它。使用下面一项将变量载入当前终端（仅载入自己创建的文件）：
 
 ```bash
-set -a
-. ./.env
-set +a
+# 逐行导入，保留 JDBC URL 中的 & 和 Base64 末尾的 =，不执行.env内容。
+while IFS= read -r entry || [ -n "$entry" ]; do
+  entry=${entry%$'\r'}
+  if [[ "$entry" =~ ^[A-Z_]+= ]]; then export "$entry"; fi
+done < .env
 ./gradlew build
 java -jar app/build/libs/communibuy.jar
 # 或开发运行：./gradlew :app:bootRun

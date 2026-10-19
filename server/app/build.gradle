@@ -5,17 +5,48 @@
  */
 
 plugins {
+    id 'org.springframework.boot' version '3.2.2'
+    id 'io.spring.dependency-management' version '1.1.4'
     id 'java'
     id 'application'
 }
 
-jar {
-    from sourceSets.main.java
+group = 'hy.CommunityBuy'
+version = '0.0.1-SNAPSHOT'
+application {
+    mainClass = 'hy.CommunityBuy.MainApplication'
+}
 
-    manifest {
-        from 'src/main/META-INF/MANIFEST.MF'
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
     }
+}
+
+jar {
     reproducibleFileOrder = true
+    from sourceSets.main.java
+    from('src/main/assets') {
+        into 'assets'
+    }
+    
+    // Merge Non-default Manifest Files
+    def mfDir = file('src/main/META-INF')
+    def mfFiles = mfDir.listFiles()
+        ?.findAll { it.isFile() && it.name.endsWith('.MF') }
+        ?.sort { a, b -> a.name <=> b.name }
+    if (mfFiles) {
+        manifest.attributes.clear()
+        manifest.from(mfFiles)
+        doLast {
+            def lastMf = mfFiles.last()
+            def jarFile = archiveFile.get().asFile
+            ant.zip(destfile: jarFile, update: true) {
+                zipfileset(file: lastMf, fullpath: 'META-INF/MANIFEST.MF')
+            }
+        }
+    }
+    
 }
 
 tasks.withType(AbstractArchiveTask) {
@@ -32,5 +63,16 @@ tasks.named('jar').configure {
     }
 }
 
+repositories {
+    mavenCentral()
+}
+
 dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

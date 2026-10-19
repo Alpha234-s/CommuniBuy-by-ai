@@ -5,15 +5,30 @@ repositories {
     mavenCentral()
 }
 
-tasks.register("fixJarTime", Exec) {
+allprojects {
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+    tasks.withType(GroovyCompile) {
+        options.encoding = 'UTF-8'
+    }
+    tasks.withType(Test) {
+        systemProperty 'file.encoding', 'UTF-8'
+    }
+    tasks.withType(JavaExec) {
+        systemProperty 'file.encoding', 'UTF-8'
+    }
+}
+
+tasks.register("postBuildScripts", Exec) {
     workingDir = project.rootDir
     def isWindows = System.properties["os.name"]
         .toLowerCase(Locale.ROOT)
         .contains("windows")
     def pyPath = isWindows ? "python.exe" : "python3"
-    def scriptPath = file("scripts/fix_jar_time.py")
+    def fixJarTime = file("scripts/fix_jar_time.py")
     doFirst {
-        commandLine pyPath, scriptPath
+        commandLine pyPath, fixJarTime
     }
 }
 
@@ -42,7 +57,7 @@ tasks.register("build").configure {
             }
         }
     }
-    finalizedBy "fixJarTime"
+    finalizedBy "postBuildScripts"
 }
 
 dependencies {

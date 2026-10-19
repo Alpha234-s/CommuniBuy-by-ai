@@ -50,6 +50,11 @@ for role in ('seller_a', 'seller_b', 'buyer'):
     tokens[role] = call('POST', '/auth', {'user': user, 'password': password})['token']
 seller_a, seller_b, buyer = (tokens[x] for x in ('seller_a', 'seller_b', 'buyer'))
 print('PASS prepare ordinary accounts: each may buy and sell; credentials omitted')
+# json.dumps escapes each Chinese character to six bytes: a valid DTO can exceed 32 KiB.
+boundary = {'name': 'Boundary fixture', 'description': '\u4e2d' * 10000, 'price': 0, 'stock': 0, 'status': -1}
+assert len(call('POST', '/item', boundary, seller_a)['description']) == 10000
+call('POST', '/item', {**boundary, 'description': '\u4e2d' * 10001}, seller_a, expected=400)
+print('PASS maximum escaped-Unicode description accepted; over-limit description rejected')
 products = []
 for name, price, seller in [('Apples', 299, seller_a), ('Eggs', 199, seller_a), ('Bread', 499, seller_b)]:
     item = call('POST', '/item', {'name': name, 'price': price, 'stock': 5, 'status': 0}, seller)

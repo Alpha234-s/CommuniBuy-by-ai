@@ -105,6 +105,8 @@
 
 自审：不将TCP探活当数据库健康；不把模拟叫真实沙箱；备份恢复包含非空账务数据；restore禁止覆盖源库/非空库且无DROP；Docker context仅复制验收JAR，不含.env；代理不记录原始URI/查询；明确V4/V5前写版本不能回退。没有外部人工评审，后续需维护者评审。
 
+最终HTTP边界自审补记：Actions39258440401已验证clean无缓存构建及77项真实执行、容器代理闭环，见ci-no-cache.json。发现合法description 10000中文经JSON转义约60000字节，原代理32k会提前拒绝合法DTO；HTTP/HTTPS模板限制改128k，commerce-demo新增10000成功/10001返回400两个HTTP断言。本地新脚本完整流程通过；代理回归交由下一CI运行，不宣称已通过。Java/SQL/JAR未变。
+
 ## 最终自审补充与验收进展
 
 部署提交9191bfa已上传，远端035c21c文件树一致。Actions39257549748实际成功：Linux真实MySQL Testcontainers、77测试零失败/错误/跳过、格式构建、JAR演示/读取压测、Docker构建/启动及Nginx代理后完整商城演示、nginx -t、UID10001全部通过，原始摘录ci-container.json。首轮39256869955也成功，见ci-phase5.json。当前JAR哈希对应performance-final.json与deployment.json；最终本地再次读取测量P95 22.4431ms/616.6908rps/0错误，仍使用运行前固定目标，不覆盖首轮测量。

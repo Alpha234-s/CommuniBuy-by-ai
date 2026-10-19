@@ -11,7 +11,7 @@ server {
     ssl_certificate /etc/nginx/tls/fullchain.pem;
     ssl_certificate_key /etc/nginx/tls/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
-    client_max_body_size 32k;
+    client_max_body_size 128k;
     location / {
         proxy_pass http://app:8080;
         proxy_set_header Host $host;

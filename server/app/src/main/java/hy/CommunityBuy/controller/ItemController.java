@@ -1,78 +1,22 @@
 package hy.CommunityBuy.controller;
-
-import hy.CommunityBuy.entity.Item;
+import hy.CommunityBuy.dto.*;
+import hy.CommunityBuy.dto.Dtos.*;
+import hy.CommunityBuy.security.Actor;
 import hy.CommunityBuy.service.ItemService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
-
-@RestController
-@RequestMapping("/api/v1/item")
+@RestController @RequestMapping("/api/v1/item") @RequiredArgsConstructor @Validated
 public class ItemController {
-
-    @Autowired
-    private ItemService itemService;
-
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getItems(
-            @RequestHeader("token") String token,
-            @RequestParam(required = false) Integer status,
-            @RequestParam(required = false) String owner,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "100") Integer size) {
-        
-        // 简化版：实际应处理分页逻辑
-        var items = itemService.getAllItems(status, owner);
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("items", items.stream().map(i -> i.getId()).toList());
-        response.put("count", items.size());
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> getItem(@RequestHeader("token") String token, @PathVariable Long id) {
-        return itemService.getItem(id).map(item -> {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            Map<String, Object> data = new HashMap<>();
-            data.put("id", item.getId());
-            data.put("name", item.getName());
-            data.put("description", item.getDescription());
-            data.put("price", item.getPrice());
-            data.put("stock", item.getStock());
-            data.put("status", item.getStatus());
-            data.put("owner", item.getOwnerId());
-            data.put("startTime", item.getStartTime());
-            data.put("endTime", item.getEndTime());
-            response.put("data", data);
-            return ResponseEntity.ok(response);
-        }).orElseGet(() -> {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            return ResponseEntity.ok(response);
-        });
-    }
-
-    @PostMapping
-    public ResponseEntity<Map<String, Object>> createItem(@RequestHeader("token") String token, @RequestBody Item item) {
-        Item created = itemService.createItem(item);
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("item", created.getId());
-        return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/{id}")
-    public ResponseEntity<Map<String, Object>> updateItem(@RequestHeader("token") String token, @PathVariable Long id, @RequestBody Item item) {
-        Item updated = itemService.updateItem(id, item);
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("message", "Update successful");
-        return ResponseEntity.ok(response);
-    }
+    private final ItemService items;
+    @GetMapping public Api<PageView<ItemView>> list(@RequestParam(required=false) @Size(max=128) String keyword,
+        @RequestParam(required=false) @Min(-1) @Max(0) Integer status,
+        @RequestParam(required=false) @Pattern(regexp=Dtos.USER_ID) String owner,
+        @RequestParam(defaultValue="0") @Min(0) @Max(1000000) int page,
+        @RequestParam(defaultValue="20") @Min(1) @Max(100) int size) { return Api.ok(items.list(keyword,status,owner,page,size)); }
+    @GetMapping("/{id}") public Api<ItemView> get(@PathVariable @Positive long id) { return Api.ok(items.get(id)); }
+    @PostMapping public Api<ItemView> create(@Valid @RequestBody NewItem r) { return Api.ok(items.create(Actor.current(),r)); }
+    @PostMapping("/{id}") public Api<ItemView> update(@PathVariable @Positive long id, @Valid @RequestBody EditItem r) { return Api.ok(items.update(Actor.current(),id,r)); }
 }

@@ -1,11 +1,12 @@
 package hy.CommunityBuy.repository;
-
 import hy.CommunityBuy.entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.*;
 import java.util.Optional;
-
-@Repository
 public interface UserRepository extends JpaRepository<User, String> {
-    Optional<User> findById(String id);
+    @Modifying
+    @Query(value="INSERT INTO users (id,password,role,auth_version,password_scheme) VALUES (:id,:password,:role,0,'BCRYPT')", nativeQuery=true)
+    void insert(String id, String password, int role);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id") Optional<User> lock(String id);
 }

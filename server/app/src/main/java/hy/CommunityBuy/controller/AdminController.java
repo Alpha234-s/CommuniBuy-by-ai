@@ -1,24 +1,12 @@
 package hy.CommunityBuy.controller;
-
+import hy.CommunityBuy.dto.*;
+import hy.CommunityBuy.dto.Dtos.Stats;
+import hy.CommunityBuy.security.Actor;
 import hy.CommunityBuy.service.AdminService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
-
-@RestController
-@RequestMapping("/api/v1/stats")
+@RestController @RequiredArgsConstructor
 public class AdminController {
-
-    @Autowired
-    private AdminService adminService;
-
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getStats(@RequestHeader("token") String token) {
-        // 简化版：实际应校验管理员权限
-        Map<String, Object> response = adminService.getGlobalStats();
-        response.put("success", true);
-        return ResponseEntity.ok(response);
-    }
+    private final AdminService admin;
+    @GetMapping("/api/v1/stats") public Api<Stats> stats() { return Api.ok(admin.stats(Actor.current())); }
 }

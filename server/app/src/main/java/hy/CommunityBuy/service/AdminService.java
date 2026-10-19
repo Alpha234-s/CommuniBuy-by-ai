@@ -1,29 +1,20 @@
 package hy.CommunityBuy.service;
-
-import hy.CommunityBuy.repository.ItemRepository;
-import hy.CommunityBuy.repository.OrderRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import hy.CommunityBuy.dto.Dtos.Stats;
+import hy.CommunityBuy.repository.*;
+import hy.CommunityBuy.security.Actor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.util.HashMap;
-import java.util.Map;
-
-@Service
+import org.springframework.transaction.annotation.Transactional;
+import java.time.Clock;
+@Service @RequiredArgsConstructor
 public class AdminService {
-
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private OrderRepository orderRepository;
-
-    public Map<String, Object> getGlobalStats() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("userCount", 0); // 实际应从 UserRepository 获取
-        stats.put("itemCount", itemRepository.count());
-        stats.put("orderCount", orderRepository.count());
-        stats.put("totalRevenue", 0); // 实际应根据订单金额累加
-        stats.put("ongoingItemCount", itemRepository.findByStatusGreaterThanEqual(0).size());
-        return stats;
+    private final UserRepository users;
+    private final ItemRepository items;
+    private final OrderRepository orders;
+    private final Clock clock;
+    @Transactional(readOnly=true, isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public Stats stats(Actor actor) {
+        actor.requireAdmin();
+        return new Stats(users.count(),items.count(),orders.count(),orders.revenue(),items.countOngoing(clock.instant().getEpochSecond()));
     }
 }

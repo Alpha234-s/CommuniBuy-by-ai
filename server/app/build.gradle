@@ -11,6 +11,9 @@ repositories { mavenCentral() }
 dependencyLocking { lockAllConfigurations() }
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
@@ -45,3 +48,17 @@ tasks.named('jacocoTestReport') {
     reports { xml.required = true; html.required = true }
 }
 tasks.named('test') { finalizedBy jacocoTestReport }
+
+configurations { formatter }
+dependencies { formatter 'com.google.googlejavaformat:google-java-format:1.28.0:all-deps' }
+def configureFormatter = { task, replace ->
+    task.classpath = configurations.formatter
+    task.mainClass = 'com.google.googlejavaformat.java.Main'
+    task.javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    task.jvmArgs = ['api', 'file', 'parser', 'tree', 'util', 'code'].collect { '--add-exports=jdk.compiler/com.sun.tools.javac.' + it + '=ALL-UNNAMED' }
+    task.args = (replace ? ['--replace'] : ['--dry-run', '--set-exit-if-changed']) + fileTree('src').matching { include '**/*.java' }.files.sort().collect { it.absolutePath }
+}
+tasks.register('formatJava', JavaExec) { configureFormatter(delegate, true) }
+tasks.register('formatCheck', JavaExec) { configureFormatter(delegate, false) }
+tasks.named('check') { dependsOn formatCheck }
+tasks.withType(JavaCompile).configureEach { options.compilerArgs += ['-Xlint:unchecked', '-Werror'] }

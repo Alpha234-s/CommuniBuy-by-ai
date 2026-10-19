@@ -91,7 +91,7 @@ python3 scripts/demo.py
 - `PAYMENT_TIMEOUT_SECONDS`：1..604800，默认 900；`ORDER_SWEEP_DELAY_MS` 默认 60000。订单保存创建时的截止时间，改配置只影响新订单。每次处理至多 100 笔，积压下一轮继续，启动时也补偿。失败订单记录安全日志，需检查并处理。
 - `LEGACY_PASSWORD_LOGIN` 默认 false；旧密码迁移只在维护者明确启用时允许，详见数据库文档。
 - 实现为单体数据库事务；支持多个任务重复执行，不需要 Redis、消息队列或分布式锁。未接微信、短信、真实支付/退款、物流、上传；没有实现物理删除账号/商品/订单。
-- 正式交付前需部署 HTTPS、配置允许的前端源/反向代理，并按课程实际部署增加登录限流及运维监控；本次未实现这些外围能力。跨域配置目前没有开放，建议前后端同源代理 `/api`。
+- 已实现登录/写入限流、受保护Actuator/Prometheus、精确CORS和审计，见[运行安全](../documents/server/operations.md)。HTTPS和反向代理部署见阶段6说明；优先同源 `/api`。
 
 本次实际运行结果见 [验收记录](../documents/server/verification.md)。已有库必须先阅读[迁移说明](../documents/database/design.md)，不得用重建数据库替代升级。
 

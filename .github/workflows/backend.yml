@@ -30,6 +30,7 @@ jobs:
           path: |
             server/app/build/reports/tests/
             server/app/build/test-results/
+            server/app/build/reports/jacoco/
             server/app/build/libs/communibuy.jar
       - name: Start executable JAR and run HTTP demonstration
         shell: bash
@@ -37,10 +38,20 @@ jobs:
           export DB_PASSWORD="$(openssl rand -hex 24)"
           export MYSQL_ROOT_PASSWORD="$(openssl rand -hex 24)"
           export JWT_SECRET="$(openssl rand -base64 48)"
+          export PAYMENT_SIM_SECRET="$(openssl rand -base64 48)"
+          export PAYMENT_MODE=simulator
           export DB_USER=communibuy
           export DB_URL='jdbc:mysql://127.0.0.1:3307/communibuy?allowPublicKeyRetrieval=true&useSSL=false'
           docker compose up -d --wait
           java -jar app/build/libs/communibuy.jar > app/build/demo-startup.log 2>&1 &
           app_pid=$!
           trap 'kill "$app_pid" || true; docker compose down' EXIT
-          python3 scripts/demo.py --wait-seconds 90
+          python3 scripts/commerce-demo.py --wait-seconds 90
+          python3 scripts/load-test.py --output app/build/performance.json --jar app/build/libs/communibuy.jar
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-runtime-evidence
+          path: |
+            server/app/build/performance.json
+            server/app/build/demo-startup.log

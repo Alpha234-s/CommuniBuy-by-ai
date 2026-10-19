@@ -385,5 +385,30 @@ class BackendIntegrationTest {
             assertThat(logs).contains("/api/v1/user/{id}","status=200").doesNotContain("Test-password-42","private-query","Bearer","eyJ","Private buyer");
         } finally { logger.detachAppender(capture); capture.stop(); }
     }
+    @Test void concurrentAdministratorDemotionRetainsAnAuthorizedAdministrator() throws Exception {
+        userService.createAdmin(new CreateUser("admin_two","Admin-test-password"));
+        var other=new Actor("admin_two",true);
+        Supplier<Boolean> first=()->tryRole(administrator,"admin_two"),second=()->tryRole(other,"admin");
+        assertThat(race(List.of(first,second))).containsExactlyInAnyOrder(true,false);
+        assertThat(users.findAll().stream().filter(u->u.getRole()==1).count()).isEqualTo(1);
+    }
+    boolean tryRole(Actor actor,String id) {
+        try {userService.role(actor,id,0);return true;}
+        catch(hy.CommunityBuy.exception.BusinessException e){assertThat(e.getStatus()).isEqualTo(403);return false;}
+    }
+    @Test void anOrdinaryAccountMayBuyAndSellWithoutRolePromotion() {
+        var own=itemService.create(buyer,new NewItem("Buyer also sells",null,50,1,0,0L,null));
+        var bought=orderService.create(seller,new NewOrder(own.id(),1,"address"),"dual-identity");
+        assertThat(bought.user()).isEqualTo("seller");assertThat(bought.owner()).isEqualTo("buyer");
+        assertThat(users.findById("buyer").orElseThrow().getRole()).isZero();
+        assertThat(users.findById("seller").orElseThrow().getRole()).isZero();
+    }
+    @Test void unicodePasswordByteLimitAndWrongOldPasswordNeverChangeAccount() throws Exception {
+        request(null,"POST","/api/v1/auth/register",new CreateUser("unicode","密".repeat(30))).andExpect(status().isBadRequest());
+        String before=users.findById("buyer").orElseThrow().getPassword();String old=token("buyer");
+        request("buyer","POST","/api/v1/auth/reset",new Reset("incorrect","New-test-password")).andExpect(status().isUnauthorized());
+        assertThat(users.findById("buyer").orElseThrow().getPassword()).isEqualTo(before);
+        mvc.perform(get("/api/v1/auth").header("Authorization","Bearer "+old)).andExpect(status().isOk());
+    }
 
 }

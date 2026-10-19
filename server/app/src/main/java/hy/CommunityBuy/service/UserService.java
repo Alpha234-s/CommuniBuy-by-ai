@@ -45,6 +45,8 @@ public class UserService {
     @Transactional
     public UserView role(Actor actor, String id, int role) {
         actor.requireAdmin();
+        // Re-check the actual actor under ordered administrator locks: concurrent mutual demotion cannot remove every admin.
+        if (users.lockAdministrators().stream().noneMatch(u -> u.getId().equals(actor.id()))) throw BusinessException.forbidden();
         if (actor.id().equals(id)) throw BusinessException.forbidden();
         var u = users.lock(id).orElseThrow(BusinessException::missing);
         u.setRole(role); u.setAuthVersion(u.getAuthVersion()+1); return UserView.of(u);

@@ -16,14 +16,16 @@ public class ItemService {
     private final ItemRepository items;
     private final OrderRepository orders;
     private final Clock clock;
+    public PageView<ItemView> list(String keyword,Integer status,String owner,int page,int size){return list(keyword,status,owner,null,page,size);}
     @Transactional(readOnly=true)
-    public PageView<ItemView> list(String keyword, Integer status, String owner, int page, int size) {
+    public PageView<ItemView> list(String keyword, Integer status, String owner, Long category, int page, int size) {
         return PageView.of(items.findAll((root,q,cb) -> {
             List<Predicate> p = new ArrayList<>();
             if (keyword!=null && !keyword.isBlank()) {
                 String pattern = "%" + keyword.replace("!", "!!").replace("%", "!%").replace("_", "!_") + "%";
                 p.add(cb.or(cb.like(root.get("name"),pattern,'!'),cb.like(root.get("description"),pattern,'!')));
             }
+            if(category!=null)p.add(cb.equal(root.get("categoryId"),category));
             if (status!=null) p.add(cb.equal(root.get("status"),status));
             if (owner!=null) p.add(cb.equal(root.get("ownerId"),owner));
             return cb.and(p.toArray(Predicate[]::new));

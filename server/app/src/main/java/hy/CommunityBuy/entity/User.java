@@ -15,4 +15,5 @@ public class User {
     @Column(length = 255) private String address;
     @Column(nullable = false) private Long authVersion = 0L;
     @Column(nullable = false, length = 16) private String passwordScheme = "BCRYPT";
+    @Column(nullable=false) private Long cartVersion = 0L;
 }

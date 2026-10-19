@@ -21,6 +21,7 @@ public class OrderService {
     private final ItemRepository items;
     private final UserRepository users;
     private final Clock clock;
+    private final hy.CommunityBuy.commerce.OrderLines lines;
     @Value("${app.orders.payment-timeout-seconds}") private long timeout;
     @PostConstruct void validate() { if (timeout < 1 || timeout > 604800) throw new IllegalArgumentException("Payment timeout must be 1..604800 seconds"); }
     @Transactional(readOnly=true)
@@ -30,7 +31,10 @@ public class OrderService {
             if (!a.admin()) p.add(cb.or(cb.equal(root.get("userId"),a.id()),cb.equal(root.get("ownerId"),a.id())));
             if (buyer!=null) p.add(cb.equal(root.get("userId"),buyer));
             if (seller!=null) p.add(cb.equal(root.get("ownerId"),seller));
-            if (itemId!=null) p.add(cb.equal(root.get("itemId"),itemId));
+            if (itemId!=null) {
+                var sub=q.subquery(Long.class);var line=sub.from(OrderLineRef.class);
+                sub.select(line.get("id")).where(cb.equal(line.get("orderId"),root.get("id")),cb.equal(line.get("itemId"),itemId));p.add(cb.exists(sub));
+            }
             if (status!=null) p.add(cb.equal(root.get("status"),status));
             return cb.and(p.toArray(Predicate[]::new));
         },PageRequest.of(page,size,Sort.by(Sort.Direction.DESC,"id"))).map(o -> view(a,o)));
@@ -67,14 +71,16 @@ public class OrderService {
         o.setStatus(0); o.setCreateTime(now); o.setExpiresAt(Math.addExact(now,timeout));
         o.setItemName(i.getName()); o.setItemDescription(i.getDescription()); o.setSnapshotSource("AT_CREATION");
         o.setIdempotencyKey(key); o.setRequestHash(hash);
-        return view(a,orders.saveAndFlush(o));
+        orders.saveAndFlush(o);lines.add(o,i,r.quantity());return view(a,o);
     }
     // Every inventory-affecting path locks item BEFORE order. The initial scalar read doesn't load a stale order entity.
     private Locked lock(long id) {
-        long itemId=orders.itemId(id).orElseThrow(BusinessException::missing);
-        var item=items.lock(itemId).orElseThrow(BusinessException::missing);
+        var entries=lines.get(id);
+        if(entries.isEmpty()){orders.itemId(id).orElseThrow(BusinessException::missing);throw BusinessException.conflict("Order lines missing; reconcile legacy order");}
+        var locked=new ArrayList<Item>();
+        for(var entry:entries)locked.add(items.lock(entry.itemId()).orElseThrow(BusinessException::missing));
         var order=orders.lock(id).orElseThrow(BusinessException::missing);
-        return new Locked(item,order);
+        return new Locked(locked,order);
     }
     @Transactional(isolation=Isolation.READ_COMMITTED)
     public OrderView action(Actor a, long id, String action) {
@@ -92,7 +98,7 @@ public class OrderService {
                 if (!a.admin() && !a.id().equals(o.getOwnerId())) throw BusinessException.forbidden();
                 if (o.getStatus()==2) return view(a,o);
                 requireState(o,1); o.setStatus(2); o.setShipTime(now);
-                locked.item().setShipmentCount(Math.addExact(locked.item().getShipmentCount(),1));
+                for(var item:locked.items())item.setShipmentCount(Math.addExact(item.getShipmentCount(),1));
             }
             case "receive" -> {
                 if (!a.admin() && !a.id().equals(o.getUserId())) throw BusinessException.forbidden();
@@ -125,7 +131,13 @@ public class OrderService {
         if (o.getStatus()==0 && o.getExpiresAt()<=now) close(locked,now);
     }
     private void close(Locked locked, long now) {
-        try { locked.item().setStock(Math.addExact(locked.item().getStock(),locked.order().getQuantity())); }
+        try {
+            var entries=lines.get(locked.order().getId());
+            for(var item:locked.items()) {
+                int quantity=entries.stream().filter(l->l.itemId()==item.getId()).findFirst().orElseThrow().quantity();
+                item.setStock(Math.addExact(item.getStock(),quantity));
+            }
+        }
         catch (ArithmeticException e) { throw BusinessException.conflict("Stock overflow; administrator must reduce available stock"); }
         locked.order().setStatus(-1); locked.order().setCloseTime(now);
     }
@@ -142,5 +154,5 @@ public class OrderService {
             (r.itemId()+"\n"+r.quantity()+"\n"+r.address()).getBytes(StandardCharsets.UTF_8))); }
         catch (NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
-    private record Locked(Item item, Order order) {}
+    private record Locked(List<Item> items, Order order) {}
 }

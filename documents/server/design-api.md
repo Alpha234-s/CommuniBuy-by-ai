@@ -81,3 +81,13 @@ OrderView：`{id,itemId,user,owner,quantity,price,total,address,status,createTim
 ## 企业增量：阶段3商品快照
 
 OrderView新增itemName、itemDescription、snapshotSource（AT_CREATION/LEGACY_UNKNOWN）。新订单保存创建时名称/描述，不随商品修改或下架变化；旧订单没有这类历史记录，返回null和LEGACY_UNKNOWN，禁止前端将当前商品名当成交快照。旧字段与路径保留，幂等重试仍返回同一订单当前结果。
+
+## 企业增量：分类、购物车和拆单
+
+- `GET /categories?page&size`：分页分类；`POST /categories {name}`仅ADMIN；`PUT /item/{id}/category {categoryId}`仅发起人/ADMIN。商品列表新增category条件，与keyword/owner/status共同生效，ItemView新增categoryId。
+- `GET /cart`：仅当前用户，返回`{version,lines:[{itemId,quantity,selected,name,price,stock,status,startTime,endTime}]}`。最多50种商品。
+- `PUT /cart/{itemId} {quantity,selected}`：增/改（数量为正INT）；`DELETE /cart/{itemId}`：显式删除自己的购物车行，重复删除幂等。买家身份不能通过请求指定。
+- `POST /checkout`：Bearer与Idempotency-Key，体`{address,cartVersion,expectedTotal?}`。结算全部已勾选行，cartVersion必须来自GET；expectedTotal用于确认价格变化，实际金额始终读取数据库，不一致409。
+- 一次结算按卖家生成一个订单，每单有多商品明细，同一事务全部成功或全部失败。只在成功时删除已勾选行并增加购物车version。相同键/同参数重试返回原批次，不受成功后购物车清空影响；改参数409。重试必须沿用原cartVersion；新购买意图使用新键并刷新购物车。
+- 返回`{id,total,orders:[{order:OrderView,lines:[{itemId,quantity,price,total,itemName,itemDescription,snapshotSource}]}]}`。`GET /checkout/{id}`仅买家/ADMIN，卖家不能看整个跨卖家批次。`GET /order/{id}/details`按原订单参与人规则读取一张订单及明细。
+- 兼容旧单商品入口`POST /order`，也会写一条明细。多商品订单的主表itemId/price/itemName为第一明细的兼容摘要，quantity为数量合计、total为明细金额总和；**前端对多商品单必须展示lines，不得用price*quantity推算总额**。所有操作和item筛选覆盖全部明细，非主商品也可查询到订单。

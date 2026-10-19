@@ -88,3 +88,9 @@ V2只增加 `password_scheme='LEGACY_PLAIN'` 标记，保留原值。普通运�
 ## 企业增量迁移V3
 
 V3新增订单商品名称/描述及snapshot_source，旧记录不回填当前目录值，标LEGACY_UNKNOWN。新下单服务写AT_CREATION。此迁移纯新增列，不编辑V1/V2，不改变库存、角色、价格和订单归属；仍须备份及复制库演练。旧二进制可读旧字段，但回退后新增订单不会记录名称快照，因此回滚需维护窗口和语义兼容评估。
+
+## 企业增量V4
+
+新增categories、cart_entries、checkout_batches、order_lines；items.category_id可空关联分类，users.cart_version用于购物车并发确认，orders.checkout_id关联批次。购物车(user,item)、批次(user,幂等键)、明细(order,item)均唯一且有FK。历史单商品订单原值迁移为一条明细，不关联现目录补造名称。旧header的price*quantity=total约束替换为正数量/非负价格总额；每条明细仍由CHECK保证价格×数量，应用在同事务精确累加header与批次总额。
+
+V4后不能直接运行不理解order_lines的旧版本进行写入：会遗漏明细和多商品库存。需要回滚时停写、保留新交易，先部署理解V4的上一兼容应用；不得自动drop新表或恢复旧备份覆盖新交易。备份恢复与可回滚版本在阶段6演练。

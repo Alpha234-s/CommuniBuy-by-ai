@@ -2,6 +2,10 @@ package hy.CommunityBuy;
 import org.testcontainers.containers.MySQLContainer;
 final class TestDatabase {
     private TestDatabase() {}
+    static void reset(org.springframework.jdbc.core.JdbcTemplate jdbc) {
+        if(!"communibuy_test".equals(jdbc.queryForObject("select database()",String.class)))throw new IllegalStateException("Not the disposable business test schema");
+        for(String table:java.util.List.of("order_lines","cart_entries","orders","checkout_batches","items","categories","blacklist","users"))jdbc.update("DELETE FROM "+table);
+    }
     record Connection(String url,String user,String password) {}
     static Connection connect(boolean migration) {
         String env=migration ? "TEST_MIGRATION_DB_URL" : "TEST_DB_URL";

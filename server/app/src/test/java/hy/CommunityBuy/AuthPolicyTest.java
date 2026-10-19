@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest(properties={"app.jwt.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=","app.orders.scheduling-enabled=false"})
 class AuthPolicyTest {
-    static final TestDatabase.Connection DB=TestDatabase.connect(false);
+    static final TestDatabase.Connection DB=IntegrationSupport.DB;
     @DynamicPropertySource static void database(DynamicPropertyRegistry r) {
         r.add("spring.datasource.url",DB::url);r.add("spring.datasource.username",DB::user);r.add("spring.datasource.password",DB::password);
     }

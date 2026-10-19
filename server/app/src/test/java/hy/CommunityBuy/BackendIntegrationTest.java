@@ -28,61 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "app.jwt.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
     "app.jwt.ttl-seconds=3600", "app.orders.scheduling-enabled=false", "app.auth.legacy-password-login=true"})
 @AutoConfigureMockMvc @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class BackendIntegrationTest {
-    static final TestDatabase.Connection DB=TestDatabase.connect(false);
-    @DynamicPropertySource static void database(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url",DB::url); r.add("spring.datasource.username",DB::user); r.add("spring.datasource.password",DB::password);
-    }
-    @TestConfiguration static class TimeConfig {
-        @Bean @Primary MutableClock testClock() { return new MutableClock(); }
-    }
-    static class MutableClock extends Clock {
-        final AtomicReference<Instant> now=new AtomicReference<>(Instant.parse("2026-10-19T00:00:00Z"));
-        public ZoneId getZone(){ return ZoneOffset.UTC; }
-        public Clock withZone(ZoneId zone){ return this; }
-        public Instant instant(){ return now.get(); }
-    }
-    @Autowired MockMvc mvc;
-    @Autowired ObjectMapper json;
-    @Autowired JdbcTemplate jdbc;
-    @Autowired UserRepository users;
-    @Autowired ItemRepository items;
-    @Autowired OrderRepository orders;
-    @Autowired UserService userService;
-    @Autowired AuthService auth;
-    @Autowired ItemService itemService;
-    @Autowired OrderService orderService;
-    @Autowired AdminService admin;
-    @Autowired JwtEncoder encoder;
-    @Autowired PasswordEncoder passwords;
-    @Autowired MutableClock clock;
-    final Actor buyer=new Actor("buyer",false), seller=new Actor("seller",false), outsider=new Actor("outsider",false), administrator=new Actor("admin",true);
-    String hash;
-    @BeforeAll void hash() { hash=passwords.encode("Test-password-42"); }
-    @BeforeEach void setup() {
-        jdbc.update("DELETE FROM orders"); jdbc.update("DELETE FROM items"); jdbc.update("DELETE FROM blacklist"); jdbc.update("DELETE FROM users");
-        clock.now.set(Instant.parse("2026-10-19T00:00:00Z"));
-        for (String id:List.of("buyer","seller","outsider","admin")) {
-            var u=new User(); u.setId(id); u.setPassword(hash); u.setRole(id.equals("admin") ? 1:0); u.setAddress("Private "+id); users.saveAndFlush(u);
-        }
-    }
-    String token(String id) { return token(id,clock.instant(),clock.instant().plusSeconds(3600),"communibuy","communibuy-api"); }
-    String token(String id,Instant issued,Instant expiry,String issuer,String audience) {
-        var u=users.findById(id).orElseThrow();
-        var c=JwtClaimsSet.builder().issuer(issuer).audience(List.of(audience)).subject(id).issuedAt(issued).notBefore(issued)
-            .expiresAt(expiry).id(UUID.randomUUID().toString()).claim("ver",u.getAuthVersion()).build();
-        return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),c)).getTokenValue();
-    }
-    ResultActions request(String user,String method,String path,Object body) throws Exception {
-        var b=method.equals("GET") ? get(path) : post(path);
-        if (user!=null) b.header("Authorization","Bearer "+token(user));
-        if (body!=null) b.contentType("application/json").content(json.writeValueAsBytes(body));
-        return mvc.perform(b);
-    }
-    ItemView item(int stock) { return itemService.create(seller,new NewItem("Apples","fresh red fruit",199,stock,0,0L,null)); }
-    OrderView order(long item,String key) { return orderService.create(buyer,new NewOrder(item,1,"Buyer address"),key); }
-    JsonNode data(ResultActions result) throws Exception { return json.readTree(result.andReturn().getResponse().getContentAsString()).get("data"); }
-    @Test void missingForgedAndLegacyTokensAreRejected() throws Exception {
+@Import(IntegrationSupport.TimeConfig.class)
+class BackendIntegrationTest extends IntegrationSupport {    @Test void missingForgedAndLegacyTokensAreRejected() throws Exception {
         mvc.perform(get("/api/v1/item")).andExpect(status().isUnauthorized());
         for(String value:List.of("mock-jwt-token-for-buyer","abc.def.ghi",token("buyer").replaceFirst("^ey","ex")))
             mvc.perform(get("/api/v1/auth").header("Authorization","Bearer "+value)).andExpect(status().isUnauthorized());
@@ -196,22 +143,14 @@ class BackendIntegrationTest {
         var offline=itemService.create(seller,new NewItem("Offline",null,1,2,-1,0L,null));
         assertThatThrownBy(()->order(offline.id(),"offline")).hasMessageContaining("available");
     }
-    <T> List<T> race(List<Supplier<T>> operations) throws Exception {
-        var pool=Executors.newFixedThreadPool(operations.size()); var ready=new CountDownLatch(operations.size()); var go=new CountDownLatch(1);
-        try {
-            var futures=new ArrayList<Future<T>>();
-            for(var op:operations) futures.add(pool.submit(()->{ready.countDown(); if(!go.await(10,TimeUnit.SECONDS)) throw new AssertionError("race barrier"); return op.get();}));
-            assertThat(ready.await(10,TimeUnit.SECONDS)).isTrue(); go.countDown();
-            var result=new ArrayList<T>(); for(var f:futures) result.add(f.get(30,TimeUnit.SECONDS)); return result;
-        } finally { pool.shutdownNow(); }
-    }
+
     @Test void lastUnitCannotBeOversoldAcrossBuyers() throws Exception {
         long item=item(1).id();
         var outcomes=race(List.of(()->tryOrder(buyer,item,"a"),()->tryOrder(outsider,item,"b")));
         assertThat(outcomes).containsExactlyInAnyOrder(true,false);
         assertThat(orders.count()).isEqualTo(1); assertThat(items.findById(item).orElseThrow().getStock()).isZero();
     }
-    boolean tryOrder(Actor a,long item,String key) { try {orderService.create(a,new NewOrder(item,1,"address"),key); return true;} catch(hy.CommunityBuy.exception.BusinessException e){assertThat(e.getStatus()).isEqualTo(409);return false;} }
+
     @Test void sequentialAndConcurrentRetriesCreateOneOrderAndRejectConflicts() throws Exception {
         long item=item(5).id(); var r=new NewOrder(item,1,"Buyer address");
         var outcomes=race(List.of(()->orderService.create(buyer,r,"retry").id(),()->orderService.create(buyer,r,"retry").id(),()->orderService.create(buyer,r,"retry").id()));
@@ -266,7 +205,7 @@ class BackendIntegrationTest {
         var o=orders.findById(id).orElseThrow(); assertThat(o.getStatus()).isIn(-1,1);
         assertThat(items.findById(item).orElseThrow().getStock()).isEqualTo(o.getStatus()==-1 ? 1:0);
     }
-    boolean tryAction(Actor a,long id,String action) { try {orderService.action(a,id,action);return true;} catch(hy.CommunityBuy.exception.BusinessException e){assertThat(e.getStatus()).isIn(403,409);return false;} }
+
     @Test void sellerCancellationOfPaidOrderRecordsRefundAndExcludesRevenue() {
         long item=item(1).id(), id=order(item,"refund").id(); orderService.action(buyer,id,"pay");
         assertThat(admin.stats(administrator).totalRevenue()).isEqualTo(199);

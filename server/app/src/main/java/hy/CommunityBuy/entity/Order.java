@@ -27,4 +27,5 @@ public class Order {
     @Column(columnDefinition = "TEXT") private String itemDescription;
     @Column(nullable = false,length = 24) private String snapshotSource = "LEGACY_UNKNOWN";
     @Column(nullable = false, length = 24) private String refundStatus = "NONE";
+    @Column(length=36) private String checkoutId;
 }

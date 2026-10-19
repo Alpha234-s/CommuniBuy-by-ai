@@ -17,4 +17,5 @@ public class Item {
     private Long endTime;
     @Column(nullable = false) private Long shipmentCount = 0L;
     @Version @Column(nullable = false) private Long version = 0L;
+    private Long categoryId;
 }

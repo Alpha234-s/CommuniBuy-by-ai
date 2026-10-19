@@ -26,9 +26,9 @@ public final class Dtos {
         public static UserView of(User u) { return new UserView(u.getId(),u.getNickname(),u.getDescription(),u.getAddress(),u.getRole()); }
     }
     public record ItemView(long id, String name, String description, int price, int stock, int status,
-        String owner, long startTime, Long endTime, long shipmentCount, long version) {
+        String owner, long startTime, Long endTime, long shipmentCount, long version, Long categoryId) {
         public static ItemView of(Item i) { return new ItemView(i.getId(),i.getName(),i.getDescription(),i.getPrice(),i.getStock(),
-            i.getStatus(),i.getOwnerId(),i.getStartTime(),i.getEndTime(),i.getShipmentCount(),i.getVersion()); }
+            i.getStatus(),i.getOwnerId(),i.getStartTime(),i.getEndTime(),i.getShipmentCount(),i.getVersion(),i.getCategoryId()); }
     }
     public record OrderView(long id, long itemId, String user, String owner, int quantity, int price, long total,
         String address, int status, long createTime, Long payTime, Long shipTime, Long receiptTime, Long closeTime,

@@ -25,3 +25,5 @@ Spring Security Resource Server 统一验证 Bearer，Nimbus 实现 HS256 签名
 每张新订单持久化expiresAt；服务端严格在截止秒拒付。任务启动时及每60秒扫描过期待支付ID，按单独事务处理每笔（每轮至多100），失败不阻断其他订单；重复运行、多个实例、进程重启均靠状态+行锁保证只回补一次。大积压会分轮处理；目前适合课程规模，无高吞吐承诺。订单deadline按创建时配置冻结。
 
 平台统计在可重复读事务内从数据库取快照。交易额包括已支付未取消订单（1/2/3），退款与取消排除；团购进行中同时考虑上架和半开时间区间。没有真实资金、支付回调、微信/短信/物流、上传、多地址簿或物理删除功能。
+
+实现参考：[Spring Security JWT Resource Server](https://docs.spring.io/spring-security/reference/servlet/oauth2/resource-server/jwt.html)、[Spring Boot 3.5 系统要求](https://docs.spring.io/spring-boot/3.5/system-requirements.html)。

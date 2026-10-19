@@ -65,6 +65,7 @@ public class OrderService {
         var o=new Order(); o.setItemId(i.getId()); o.setUserId(a.id()); o.setOwnerId(i.getOwnerId());
         o.setQuantity(r.quantity()); o.setPrice(i.getPrice()); o.setTotal(total); o.setAddress(r.address());
         o.setStatus(0); o.setCreateTime(now); o.setExpiresAt(Math.addExact(now,timeout));
+        o.setItemName(i.getName()); o.setItemDescription(i.getDescription()); o.setSnapshotSource("AT_CREATION");
         o.setIdempotencyKey(key); o.setRequestHash(hash);
         return view(a,orders.saveAndFlush(o));
     }

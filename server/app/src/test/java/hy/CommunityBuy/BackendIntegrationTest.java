@@ -411,4 +411,14 @@ class BackendIntegrationTest {
         mvc.perform(get("/api/v1/auth").header("Authorization","Bearer "+old)).andExpect(status().isOk());
     }
 
+    @Test void itemSnapshotsSurviveCatalogChangesAndIdempotentRetryAfterClosure() {
+        var i=item(3);var original=order(i.id(),"historical");
+        itemService.update(seller,i.id(),new EditItem("Renamed","changed",999,null,-1,null,null,null));
+        var stored=orderService.get(buyer,original.id());
+        assertThat(stored.itemName()).isEqualTo("Apples");assertThat(stored.itemDescription()).isEqualTo("fresh red fruit");
+        assertThat(stored.snapshotSource()).isEqualTo("AT_CREATION");assertThat(stored.price()).isEqualTo(199);
+        assertThat(order(i.id(),"historical").id()).isEqualTo(original.id());
+        assertThatThrownBy(()->order(i.id(),"new-after-close")).hasMessageContaining("available");
+    }
+
 }

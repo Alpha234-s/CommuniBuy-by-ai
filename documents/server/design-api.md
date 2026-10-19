@@ -77,3 +77,7 @@ OrderView：`{id,itemId,user,owner,quantity,price,total,address,status,createTim
 4. 下单生成并保存 Idempotency-Key，网络重试沿用。支付/发货/收货/取消调用显式操作路径；地址更新仅发送 address。
 5. 不再使用空请求隐式删除；不提供订单/账号/商品物理删除。封禁和下架分别调用显式接口。size=0 调用需改为分页。
 6. 本次不重写前端；旧前端需完成这些改动才能联调。
+
+## 企业增量：阶段3商品快照
+
+OrderView新增itemName、itemDescription、snapshotSource（AT_CREATION/LEGACY_UNKNOWN）。新订单保存创建时名称/描述，不随商品修改或下架变化；旧订单没有这类历史记录，返回null和LEGACY_UNKNOWN，禁止前端将当前商品名当成交快照。旧字段与路径保留，幂等重试仍返回同一订单当前结果。

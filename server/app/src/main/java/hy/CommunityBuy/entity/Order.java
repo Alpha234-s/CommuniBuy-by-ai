@@ -23,5 +23,8 @@ public class Order {
     @Column(nullable = false) private Long expiresAt;
     @Column(nullable = false, length = 64) private String idempotencyKey;
     @Column(nullable = false, length = 64) private String requestHash;
+    @Column(length = 128) private String itemName;
+    @Column(columnDefinition = "TEXT") private String itemDescription;
+    @Column(nullable = false,length = 24) private String snapshotSource = "LEGACY_UNKNOWN";
     @Column(nullable = false, length = 24) private String refundStatus = "NONE";
 }

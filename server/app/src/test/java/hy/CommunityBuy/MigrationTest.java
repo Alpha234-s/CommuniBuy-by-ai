@@ -8,9 +8,9 @@ class MigrationTest {
     @Test void emptyDatabaseMigratesEveryVersion() {
         var flyway=Flyway.configure().dataSource(db.url(),db.user(),db.password()).cleanDisabled(false).load();
         flyway.clean();
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(3);
         flyway.validate();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
     }
     @Test void legacySqlSchemaBaselineRetainsAccountsAndConvertsInventoryAndSnapshots() throws Exception { verifyLegacy(false); }
     @Test void legacyHibernateWidthsAndUnsignedTypesMigrate() throws Exception { verifyLegacy(true); }
@@ -36,6 +36,9 @@ class MigrationTest {
             }
             try(var rs=s.executeQuery("select total,expires_at,idempotency_key from orders")) {
                 rs.next(); assertThat(rs.getLong(1)).isEqualTo(200); assertThat(rs.getLong(2)).isEqualTo(1000); assertThat(rs.getString(3)).isEqualTo("legacy-1");
+            }
+            try(var snapshot=s.executeQuery("select item_name,snapshot_source from orders")) {
+                snapshot.next(); assertThat(snapshot.getString(1)).isNull(); assertThat(snapshot.getString(2)).isEqualTo("LEGACY_UNKNOWN");
             }
             assertThatThrownBy(()->s.executeUpdate("insert into items(name,price,stock,status,owner_id,start_time) values ('bad',1,-1,0,'Legacy',0)"))
                 .isInstanceOf(SQLException.class);

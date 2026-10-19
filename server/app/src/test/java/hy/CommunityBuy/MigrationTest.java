@@ -5,6 +5,13 @@ import java.sql.*;
 import static org.assertj.core.api.Assertions.*;
 class MigrationTest {
     static final TestDatabase.Connection db=TestDatabase.connect(true);
+    @Test void emptyDatabaseMigratesEveryVersion() {
+        var flyway=Flyway.configure().dataSource(db.url(),db.user(),db.password()).cleanDisabled(false).load();
+        flyway.clean();
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);
+        flyway.validate();
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+    }
     @Test void legacySqlSchemaBaselineRetainsAccountsAndConvertsInventoryAndSnapshots() throws Exception { verifyLegacy(false); }
     @Test void legacyHibernateWidthsAndUnsignedTypesMigrate() throws Exception { verifyLegacy(true); }
     private void verifyLegacy(boolean widened) throws Exception {

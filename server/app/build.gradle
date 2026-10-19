@@ -31,6 +31,9 @@ dependencies {
 }
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
+    // Database state and runtime configuration are external inputs: never reuse test success.
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
     testLogging { events 'passed', 'skipped', 'failed'; exceptionFormat 'short' }
     // Integration tests fail if neither Docker nor an explicitly isolated MySQL is available.
     environment 'TEST_DB_URL', System.getenv('TEST_DB_URL') ?: ''

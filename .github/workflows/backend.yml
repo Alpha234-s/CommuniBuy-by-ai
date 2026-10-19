@@ -20,7 +20,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew build --no-daemon
+      - run: ./gradlew clean build --no-daemon --no-build-cache
       - name: Require actual test discovery
         run: python3 scripts/check-tests.py
       - uses: actions/upload-artifact@v4

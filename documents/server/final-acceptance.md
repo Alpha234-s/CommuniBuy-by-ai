@@ -1,24 +1,26 @@
+> 最终代码验收：本地1f6b5b3 / 远端6748ace76082eeb4fe04ecfc474df312b56da3ef；[Actions成功](https://github.com/Alpha234-s/CommuniBuy-by-ai/actions/runs/39261266487)，78项0失败/错误/跳过，JAR与容器代理全闭环通过。后续为证据文档提交，运行代码不变。真实支付平台与公网TLS未验收。
+
 # 企业商城验收矩阵（按实际证据更新）
 
 本轮从7052ee7已有修复增量实施，没有覆盖已有认证/库存测试；上游main核对为e2991cd。分支feat/backend-enterprise。上一轮verification.md不是本轮结果。本报告与progress.md一起维护，未验证项不能算通过。
 
 | 课程要求 | 代码/设计证据 | 验收证据/状态 |
 | --- | --- | --- |
-| 构建、跨平台Wrapper、标准可执行JAR | server/build.gradle、app/build.gradle、gradlew/.bat、锁文件 | JDK21 build实际通过；新JAR启动通过；Linux CI实际通过 |
-| 统一DTO/错误/校验/分页/OpenAPI | dto/Dtos、commerce/CommerceDtos、finance/FinanceDtos、ApiErrors、OpenApiConfig | BackendIntegrationTest正常/边界/异常/无泄密；Reliability审计DTO；管理员OpenAPI实际可读 |
-| traceId与日志脱敏 | TraceFilter、AuditAspect、AuditSink | 伪造trace不反射、日志不含测试秘密、HTTP→审计一致；evidence/deployment.json |
-| 认证与隐私 | SecurityConfig、AuthService、UserService | AuthPolicy1+Backend相关测试，伪造/缺声明/过期/注销/改密/封禁、越权、角色竞争、无密码；全部通过 |
-| 库存事务与并发 | ItemService、OrderService、OrderLines | 最后一件、相同键、跨商品键、更新竞争、创建CHECK失败回滚、取消/付款/超时竞争；真实MySQL+CountDownLatch+可控Clock |
-| 数据迁移/旧明文/历史身份 | V1～V6、database/design.md | Migration3：空库、旧SQL和旧JPA宽度；原型baseline保留数据；不清库、不造历史归属 |
-| 分类搜索/购物车/拆单 | ShopService、ShopController、V4 | Commerce9：多条件、分页权限、选中清理、价格/版本、跨卖家失败全回滚、并发重试/最后库存 |
-| 支付记录/查询/通知 | FinanceBook、PaymentChannel、SimulatorChannel、SimulatorCallbacks | Finance18中验证验签/金额/商户/事件冲突/失败重试/主动查询/取消竞争；SIMULATOR通过，真实平台沙箱未实现/未验收 |
-| 退款/评价/结算/统计 | FinanceService、OrderService、AdminService、V5 | 全额审核重试、库存一次恢复、零价退款、评价唯一、结算竞争/调整、超Long平台金额精确；HTTP完整闭环通过 |
-| 限流/CORS/监控/审计/输入安全 | RequestLimitFilter、CorsConfig、AuditController、Actuator、V6 | Reliability8全部通过；真实JAR health/metrics/trace可读，普通用户拒绝；纯文本拒绝及参数化搜索 |
-| 依赖/静态检查/覆盖报告/CI | Gradle锁、formatCheck、unchecked-Werror、backend.yml | 本地build与格式检查通过；JaCoCo生成；Linux Actions39256869955/39257549748实际成功；最后禁止测试缓存增强另行复核 |
-| 性能目标与测量 | scripts/load-test.py、performance-plan.md | 原始evidence/performance.json：预设P95≤250ms/≥30rps/0错误；本地实测20.48ms/537.11rps/0，单读取样本，不推断生产容量 |
-| 容器/代理/HTTPS | Dockerfile、compose.yml、deploy/nginx*.conf | 本地无Docker，Linux CI39257549748已实际构建运行应用/代理并跑通完整流程，nginx -t与UID10001通过；公网HTTPS无证书仍待部署者验收 |
-| 新环境、备份恢复、兼容回退 | scripts/database-copy.py、deployment.md | 原生MySQL8.4.6实际演练，见evidence/deployment.json；恢复有3订单/2支付/1退款/3结算批次，金额997/498/499，非空目标拒绝 |
-| AI开发过程与协作 | ai-development-log.md、progress.md、阶段提交 | 真实Prompt来源摘要、生成/采纳/修正/验证记录；没有可确认的外部人工评审，缺失历史明确标注 |
+| 构建、跨平台Wrapper、标准可执行JAR | [构建](../../server/app/build.gradle)、[Wrapper](../../server/gradlew)、[依赖锁](../../server/app/gradle.lockfile) | JDK21 build实际通过；新JAR启动通过；Linux CI实际通过 |
+| 统一DTO/错误/校验/分页/OpenAPI | [DTO](../../server/app/src/main/java/hy/CommunityBuy/dto/Dtos.java)、[统一异常](../../server/app/src/main/java/hy/CommunityBuy/exception/ApiErrors.java)、[OpenAPI](../../server/app/src/main/java/hy/CommunityBuy/infrastructure/OpenApiConfig.java) | [后端回归](../../server/app/src/test/java/hy/CommunityBuy/BackendIntegrationTest.java)正常/边界/异常/无泄密；Reliability审计DTO；管理员OpenAPI实际可读 |
+| traceId与日志脱敏 | [trace](../../server/app/src/main/java/hy/CommunityBuy/infrastructure/TraceFilter.java)、[审计](../../server/app/src/main/java/hy/CommunityBuy/infrastructure/AuditAspect.java) | 伪造trace不反射、日志不含测试秘密、HTTP→审计一致；[恢复证据](evidence/deployment-release.json) |
+| 认证与隐私 | [Security](../../server/app/src/main/java/hy/CommunityBuy/security/SecurityConfig.java)、[认证](../../server/app/src/main/java/hy/CommunityBuy/service/AuthService.java)、[用户](../../server/app/src/main/java/hy/CommunityBuy/service/UserService.java) | AuthPolicy1+Backend相关测试，伪造/缺声明/过期/注销/改密/封禁、越权、角色竞争、无密码；全部通过 |
+| 库存事务与并发 | [商品](../../server/app/src/main/java/hy/CommunityBuy/service/ItemService.java)、[订单](../../server/app/src/main/java/hy/CommunityBuy/service/OrderService.java)、[明细](../../server/app/src/main/java/hy/CommunityBuy/commerce/OrderLines.java) | 最后一件、相同键、跨商品键、更新竞争、创建CHECK失败回滚、取消/付款/超时竞争；真实MySQL+CountDownLatch+可控Clock |
+| 数据迁移/旧明文/历史身份 | [迁移V6](../../server/app/src/main/resources/db/migration/V6__audit_and_operational_indexes.sql)、[旧库迁移](../database/design.md) | [迁移3项](../../server/app/src/test/java/hy/CommunityBuy/MigrationTest.java)：空库、旧SQL和旧JPA宽度；原型baseline保留数据；不清库、不造历史归属 |
+| 分类搜索/购物车/拆单 | [购物车结算](../../server/app/src/main/java/hy/CommunityBuy/commerce/ShopService.java)、[V4](../../server/app/src/main/resources/db/migration/V4__cart_checkout_order_lines.sql) | [购物车9项](../../server/app/src/test/java/hy/CommunityBuy/CommerceIntegrationTest.java)：多条件、分页权限、选中清理、价格/版本、跨卖家失败全回滚、并发重试/最后库存 |
+| 支付记录/查询/通知 | [支付账簿](../../server/app/src/main/java/hy/CommunityBuy/finance/FinanceBook.java)、[渠道端口](../../server/app/src/main/java/hy/CommunityBuy/finance/PaymentChannel.java)、[通知签名](../../server/app/src/main/java/hy/CommunityBuy/finance/SimulatorSignatures.java) | [账务18项](../../server/app/src/test/java/hy/CommunityBuy/FinanceIntegrationTest.java)中验证验签/金额/商户/事件冲突/失败重试/主动查询/取消竞争；SIMULATOR通过，真实平台沙箱未实现/未验收 |
+| 退款/评价/结算/统计 | [结算](../../server/app/src/main/java/hy/CommunityBuy/finance/FinanceService.java)、[退款](../../server/app/src/main/java/hy/CommunityBuy/service/OrderService.java)、[统计](../../server/app/src/main/java/hy/CommunityBuy/service/AdminService.java) | 全额审核重试、库存一次恢复、零价退款、评价唯一、结算竞争/调整、超Long平台金额精确；HTTP完整闭环通过 |
+| 限流/CORS/监控/审计/输入安全 | [限流](../../server/app/src/main/java/hy/CommunityBuy/infrastructure/RequestLimitFilter.java)、[CORS](../../server/app/src/main/java/hy/CommunityBuy/security/CorsConfig.java)、[审计接口](../../server/app/src/main/java/hy/CommunityBuy/infrastructure/AuditController.java)、[运行说明](operations.md) | [可靠性8项](../../server/app/src/test/java/hy/CommunityBuy/ReliabilityIntegrationTest.java)全部通过；真实JAR health/metrics/trace可读，普通用户拒绝；纯文本拒绝及参数化搜索 |
+| 依赖/静态检查/覆盖报告/CI | [构建检查](../../server/app/build.gradle)、[CI](../../.github/workflows/backend.yml) | 本地build与格式检查通过；JaCoCo生成；最终Linux Actions39261266487实际78项成功，clean无缓存；见ci-final.json |
+| 性能目标与测量 | [压测脚本](../../server/scripts/load-test.py)、[预设目标](performance-plan.md) | 原始[测量原文](evidence/performance-release.json)：预设P95≤250ms/≥30rps/0错误；本地实测20.69ms/620.17rps/0，单读取样本，不推断生产容量 |
+| 容器/代理/HTTPS | [Dockerfile](../../server/Dockerfile)、[Compose](../../server/compose.yml)、[Nginx](../../server/deploy/nginx.conf) | 本地无Docker，Linux CI39257549748已实际构建运行应用/代理并跑通完整流程，nginx -t与UID10001通过；公网HTTPS无证书仍待部署者验收 |
+| 新环境、备份恢复、兼容回退 | [复制脚本](../../server/scripts/database-copy.py)、[部署步骤](deployment.md) | 原生MySQL8.4.6实际演练，见[恢复证据](evidence/deployment-release.json)；恢复有3订单/2支付/1退款/3结算批次，金额997/498/499，非空目标拒绝 |
+| AI开发过程与协作 | [AI记录](ai-development-log.md)、[进度/提交](progress.md) | 真实Prompt来源摘要、生成/采纳/修正/验证记录；没有可确认的外部人工评审，缺失历史明确标注 |
 
 ## 当前测试与结果
 
@@ -42,10 +44,10 @@
 
 [Actions39257549748](https://github.com/Alpha234-s/CommuniBuy-by-ai/actions/runs/39257549748)成功，head035c21c与本地9191bfa树一致。记录见evidence/ci-container.json；不是本机执行Docker的声明。上轮Linux读取P95 53.07ms/201.59rps/0错误，也达到相同预设目标。最终本地JAR(evidence/performance-final.json)读取P95 22.44ms/616.69rps/0错误，与部署恢复证据JAR哈希一致。
 
-最终自审修复Gradle外部数据库测试缓存问题：所有Test不允许缓存/up-to-date复用，CI clean build --no-build-cache。修改后本地build与输入不变第二次:app:test均实际执行77项并全通过。最终CI证据在后续更新，不以当前旧head成功冒充新提交已运行。
+最终自审修复Gradle外部数据库测试缓存问题：所有Test不允许缓存/up-to-date复用，CI clean build --no-build-cache。修改后本地build与输入不变第二次:app:test均实际执行77项并全通过。最终CI见evidence/ci-final.json，旧head结果与最后78项运行分开记录。
 
-## 发布前审计修复（本地已通过，最后代码CI待验证）
+## 发布前审计修复（本地与Linux CI均通过）
 
 新增真实MySQL1062唯一冲突HTTP回归，证实客户端409而审计500，修正AuditAspect使DataIntegrityViolationException/ConcurrencyFailureException与全局409一致。原CHECK回滚测试未改断言；最初误用3819/HY000样例的判断与失败留痕见evidence/audit-regression-before.json，未将它伪装为原本409。最终本地78项（Reliability增至8）0失败/错误/跳过，格式/构建成功；不删除或放宽原77项。
 
-最新JAR SHA256对应evidence/performance-release.json、deployment-release.json：完整HTTP含10000成功/10001拒绝、权限/退款账务、备份恢复与兼容V6回退再次通过；读取P95 20.69ms/620.17rps/0错误，保留所有早期测量不覆盖。旧ci-proxy-boundary.json证明128k代理边界在JAR与Nginx后各运行一次；本次新增审计修复的最后CI仍单独等待，不把旧77测试称为新78运行。
+最新JAR SHA256对应evidence/performance-release.json、deployment-release.json：完整HTTP含10000成功/10001拒绝、权限/退款账务、备份恢复与兼容V6回退再次通过；读取P95 20.69ms/620.17rps/0错误，保留所有早期测量不覆盖。旧ci-proxy-boundary.json证明128k代理边界在JAR与Nginx后各运行一次；最后审计修复的78项CI已通过，记录ci-final.json，不把旧77测试称为新78运行。

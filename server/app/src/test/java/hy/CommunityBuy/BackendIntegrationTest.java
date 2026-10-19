@@ -359,4 +359,31 @@ class BackendIntegrationTest {
         request("buyer","GET","/api/v1/order?item=-1",null).andExpect(status().isBadRequest());
         request("buyer","GET","/api/v1/order?status=4",null).andExpect(status().isBadRequest());
     }
+    @Test void responseTraceAndErrorCodeAreConsistentWithoutReflectingUntrustedHeader() throws Exception {
+        var result=mvc.perform(get("/api/v1/item").header("X-Trace-Id","attacker-controlled"))
+            .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.code").value("UNAUTHENTICATED")).andReturn();
+        String trace=result.getResponse().getHeader("X-Trace-Id");
+        assertThat(trace).matches("[a-f0-9]{32}");
+        assertThat(json.readTree(result.getResponse().getContentAsString()).get("traceId").asText()).isEqualTo(trace);
+        request("buyer","GET","/api/v1/item/-1",null).andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        assertThat(org.slf4j.MDC.get("traceId")).isNull();
+    }
+    @Test void openApiIsGeneratedAndRestrictedToAdministrators() throws Exception {
+        request("buyer","GET","/v3/api-docs",null).andExpect(status().isForbidden());
+        request("admin","GET","/v3/api-docs",null).andExpect(status().isOk())
+            .andExpect(jsonPath("$.openapi").exists()).andExpect(jsonPath("$.paths['/api/v1/order']").exists());
+    }
+
+    @Test void accessLogsContainRouteTemplatesAndNeverRequestSecrets() throws Exception {
+        var logger=(ch.qos.logback.classic.Logger)org.slf4j.LoggerFactory.getLogger("http.access");
+        var capture=new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        capture.start(); logger.addAppender(capture);
+        try {
+            request(null,"POST","/api/v1/auth",new Login("buyer","Test-password-42")).andExpect(status().isOk());
+            request("buyer","GET","/api/v1/user/buyer?secret=private-query",null).andExpect(status().isOk());
+            String logs=capture.list.stream().map(ch.qos.logback.classic.spi.ILoggingEvent::getFormattedMessage).collect(java.util.stream.Collectors.joining("\n"));
+            assertThat(logs).contains("/api/v1/user/{id}","status=200").doesNotContain("Test-password-42","private-query","Bearer","eyJ","Private buyer");
+        } finally { logger.detachAppender(capture); capture.stop(); }
+    }
+
 }

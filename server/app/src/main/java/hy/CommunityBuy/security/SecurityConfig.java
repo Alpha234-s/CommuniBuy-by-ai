@@ -55,12 +55,13 @@ public class SecurityConfig {
         http.csrf(x -> x.disable()).sessionManagement(x -> x.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(x -> x
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth", "/api/v1/auth/register").permitAll()
+                .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .exceptionHandling(x -> x
-                .authenticationEntryPoint((req,res,e) -> { res.setStatus(401); res.setContentType("application/json"); json.writeValue(res.getOutputStream(), Api.error("Authentication required")); })
-                .accessDeniedHandler((req,res,e) -> { res.setStatus(403); res.setContentType("application/json"); json.writeValue(res.getOutputStream(), Api.error("Access denied")); }))
+                .authenticationEntryPoint((req,res,e) -> { res.setStatus(401); res.setContentType("application/json"); json.writeValue(res.getOutputStream(), Api.error("UNAUTHENTICATED","Authentication required")); })
+                .accessDeniedHandler((req,res,e) -> { res.setStatus(403); res.setContentType("application/json"); json.writeValue(res.getOutputStream(), Api.error("FORBIDDEN","Access denied")); }))
             .oauth2ResourceServer(x -> x
-                .authenticationEntryPoint((req,res,e) -> { res.setStatus(401); res.setContentType("application/json"); json.writeValue(res.getOutputStream(), Api.error("Invalid or expired token")); })
+                .authenticationEntryPoint((req,res,e) -> { res.setStatus(401); res.setContentType("application/json"); json.writeValue(res.getOutputStream(), Api.error("UNAUTHENTICATED","Invalid or expired token")); })
                 .jwt(j -> j.decoder(decoder).jwtAuthenticationConverter(jwt -> {
                     var user = users.findById(jwt.getSubject()).orElseThrow();
                     return new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority(user.getRole() > 0 ? "ROLE_ADMIN" : "ROLE_USER")), user.getId());

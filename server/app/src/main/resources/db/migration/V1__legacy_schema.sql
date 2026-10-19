@@ -1,0 +1,16 @@
+CREATE TABLE users (
+ id VARCHAR(32) COLLATE utf8mb4_bin PRIMARY KEY, password VARCHAR(255) NOT NULL,
+ nickname VARCHAR(64), description VARCHAR(255), role INT DEFAULT 0, address VARCHAR(255)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+CREATE TABLE items (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(128) NOT NULL, description TEXT,
+ price INT NOT NULL, stock INT NOT NULL, status INT NOT NULL, owner_id VARCHAR(32), start_time BIGINT, end_time BIGINT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+CREATE TABLE orders (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, item_id BIGINT NOT NULL, user_id VARCHAR(32) NOT NULL,
+ owner_id VARCHAR(32) NOT NULL, quantity INT NOT NULL, price INT NOT NULL, address VARCHAR(255),
+ status INT NOT NULL, create_time BIGINT, pay_time BIGINT, ship_time BIGINT, receipt_time BIGINT, close_time BIGINT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+CREATE TABLE blacklist (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY, token_hash CHAR(64) NOT NULL, expire_at BIGINT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

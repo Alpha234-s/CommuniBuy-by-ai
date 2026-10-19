@@ -1,49 +1,5 @@
-plugins {
+allprojects {
+    tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+    tasks.withType(Test).configureEach { systemProperty 'file.encoding', 'UTF-8' }
 }
-
-repositories {
-    mavenCentral()
-}
-
-tasks.register("fixJarTime", Exec) {
-    workingDir = project.rootDir
-    def isWindows = System.properties["os.name"]
-        .toLowerCase(Locale.ROOT)
-        .contains("windows")
-    def pyPath = isWindows ? "python.exe" : "python3"
-    def scriptPath = file("scripts/fix_jar_time.py")
-    doFirst {
-        commandLine pyPath, scriptPath
-    }
-}
-
-tasks.register("build").configure {
-    dependsOn subprojects.collect {
-        subproject -> subproject.tasks.matching {
-            task -> task.name == "build"
-        }
-    }
-    doLast {
-        def reportsDir = file("build/reports")
-        if (reportsDir.exists()) {
-            reportsDir.deleteDir()
-        }
-        def outputDir = file("build/outputs")
-        if (outputDir.exists()) {
-            outputDir.deleteDir()
-        }
-        outputDir.mkdirs()
-        def outputFiles = file("app/build/libs")
-        if (outputFiles.exists() && outputFiles.isDirectory()) {
-            copy {
-                from outputFiles
-                into outputDir
-                include "**/*"
-            }
-        }
-    }
-    finalizedBy "fixJarTime"
-}
-
-dependencies {
-}
+tasks.register('build') { dependsOn ':app:build' }

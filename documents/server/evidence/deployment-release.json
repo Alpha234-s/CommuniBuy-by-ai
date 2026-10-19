@@ -1,0 +1,57 @@
+{
+  "mysql": "8.4.6",
+  "port": 33317,
+  "real_platform_sandbox": false,
+  "container_runtime": "unavailable locally; not executed",
+  "jar_sha256": "a7ad5b30454c59170a736b34a2bb056cce9bc78ef85f403e564597869af9f1a0",
+  "fresh_v1_to_v6_startup": true,
+  "health": "UP",
+  "trace_audit_matches": true,
+  "trace_sample": "26010a55ae3044db9a84bd26f5418b9e",
+  "metrics_verified": [
+    "http.server.requests",
+    "hikaricp.connections.active"
+  ],
+  "openapi_verified": true,
+  "full_commerce_before_backup": true,
+  "backup_restore": {
+    "passed": true,
+    "sha256": "c5b6b92bdafc0f7c1660daad8f1fb8853d6bc5ce8503a795c001c71b4ff3ce94",
+    "comparison": {
+      "table_counts": {
+        "audit_events": 33,
+        "blacklist": 1,
+        "cart_entries": 0,
+        "categories": 0,
+        "channel_events": 0,
+        "checkout_batches": 1,
+        "finance_mutex": 1,
+        "flyway_schema_history": 6,
+        "items": 5,
+        "order_lines": 4,
+        "orders": 3,
+        "payments": 2,
+        "refunds": 1,
+        "reviews": 3,
+        "settlement_batches": 3,
+        "settlement_entries": 3,
+        "simulator_operations": 3,
+        "users": 4
+      },
+      "order_total_and_refunded": "1496\t498",
+      "line_header_mismatches": 0,
+      "gross_paid": "997",
+      "refunded": "498",
+      "settlement_net": "499"
+    },
+    "separate_empty_target": true
+  },
+  "restored_deploy_profile_startup": true,
+  "compatible_v6_jar_rollback": {
+    "passed": true,
+    "previous_jar_sha256": "f83c642356071268af0d30d5f56a5200dbd398f17b6eaf479ccd3168c20aa871",
+    "schema_preserved": true,
+    "boundary": "V6-aware phase 5 binary only; no downgrade to pre-commerce writers"
+  },
+  "populated_restore_refused": true
+}

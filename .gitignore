@@ -1,7 +1,9 @@
-# IDE Files
 .vscode/
-
-# Log/OS Files
 *.log
 .DS_Store
+.gradle/
+**/build/
+.env
+*.local.properties
 
+**/__pycache__/

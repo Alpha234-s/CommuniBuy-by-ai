@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:8.4.6
+    environment:
+      MYSQL_DATABASE: communibuy
+      MYSQL_USER: communibuy
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set a separate MYSQL_ROOT_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - communibuy-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql --protocol=TCP -h127.0.0.1 -u$$MYSQL_USER -e 'SELECT 1' $$MYSQL_DATABASE"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+volumes:
+  communibuy-db:

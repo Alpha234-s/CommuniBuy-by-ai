@@ -160,6 +160,37 @@ class ReliabilityIntegrationTest extends IntegrationSupport {
   }
 
   @Test
+  void uniqueDatabaseConflictKeepsAuditAndHttpStatusConsistentAndRollsBackStock() throws Exception {
+    long item = item(2).id();
+    order(item, "first");
+    jdbc.execute("alter table orders add unique index ck_test_unique_quantity(quantity)");
+    try {
+      var response =
+          mvc.perform(
+                  post("/api/v1/order")
+                      .header("Authorization", "Bearer " + token("buyer"))
+                      .header("Idempotency-Key", "db-unique-failure")
+                      .contentType("application/json")
+                      .content(json.writeValueAsBytes(new NewOrder(item, 1, "address"))))
+              .andExpect(status().isConflict())
+              .andExpect(jsonPath("$.code").value("CONFLICT"))
+              .andReturn()
+              .getResponse();
+      assertThat(response.getContentAsString()).doesNotContain("ck_test_unique_quantity", "SQL");
+      assertThat(
+              jdbc.queryForObject(
+                  "select http_status from audit_events where trace_id=? and outcome='FAILURE'",
+                  Integer.class,
+                  response.getHeader("X-Trace-Id")))
+          .isEqualTo(409);
+    } finally {
+      jdbc.execute("alter table orders drop index ck_test_unique_quantity");
+    }
+    assertThat(orders.count()).isEqualTo(1);
+    assertThat(items.findById(item).orElseThrow().getStock()).isEqualTo(1);
+  }
+
+  @Test
   void rawHtmlIsRejectedAndKeywordSqlIsParameterized() throws Exception {
     request(
             "seller",

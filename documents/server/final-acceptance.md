@@ -13,7 +13,7 @@
 | 分类搜索/购物车/拆单 | ShopService、ShopController、V4 | Commerce9：多条件、分页权限、选中清理、价格/版本、跨卖家失败全回滚、并发重试/最后库存 |
 | 支付记录/查询/通知 | FinanceBook、PaymentChannel、SimulatorChannel、SimulatorCallbacks | Finance18中验证验签/金额/商户/事件冲突/失败重试/主动查询/取消竞争；SIMULATOR通过，真实平台沙箱未实现/未验收 |
 | 退款/评价/结算/统计 | FinanceService、OrderService、AdminService、V5 | 全额审核重试、库存一次恢复、零价退款、评价唯一、结算竞争/调整、超Long平台金额精确；HTTP完整闭环通过 |
-| 限流/CORS/监控/审计/输入安全 | RequestLimitFilter、CorsConfig、AuditController、Actuator、V6 | Reliability7全部通过；真实JAR health/metrics/trace可读，普通用户拒绝；纯文本拒绝及参数化搜索 |
+| 限流/CORS/监控/审计/输入安全 | RequestLimitFilter、CorsConfig、AuditController、Actuator、V6 | Reliability8全部通过；真实JAR health/metrics/trace可读，普通用户拒绝；纯文本拒绝及参数化搜索 |
 | 依赖/静态检查/覆盖报告/CI | Gradle锁、formatCheck、unchecked-Werror、backend.yml | 本地build与格式检查通过；JaCoCo生成；Linux Actions39256869955/39257549748实际成功；最后禁止测试缓存增强另行复核 |
 | 性能目标与测量 | scripts/load-test.py、performance-plan.md | 原始evidence/performance.json：预设P95≤250ms/≥30rps/0错误；本地实测20.48ms/537.11rps/0，单读取样本，不推断生产容量 |
 | 容器/代理/HTTPS | Dockerfile、compose.yml、deploy/nginx*.conf | 本地无Docker，Linux CI39257549748已实际构建运行应用/代理并跑通完整流程，nginx -t与UID10001通过；公网HTTPS无证书仍待部署者验收 |
@@ -22,9 +22,9 @@
 
 ## 当前测试与结果
 
-本地命令（在server；无Docker测试环境变量见README）：`./gradlew formatJava build`（修改代码后）或`./gradlew clean build --no-daemon`，Windows对应gradlew.bat；随后`python3 scripts/check-tests.py`。最终代码本地77项，0失败/错误/跳过：AuthPolicy1、Backend39、Commerce9、Finance18、Migration3、Reliability7。测试使用原生MySQL8.4.6任务专用库；不使用H2，不用Mock替代库存/锁/迁移。故障注入仅渠道端口或数据库临时CHECK，时间用Clock、竞争用latch，无sleep制造并发。
+本地命令（在server；无Docker测试环境变量见README）：`./gradlew formatJava build`（修改代码后）或`./gradlew clean build --no-daemon`，Windows对应gradlew.bat；随后`python3 scripts/check-tests.py`。最终代码本地78项，0失败/错误/跳过：AuthPolicy1、Backend39、Commerce9、Finance18、Migration3、Reliability8。测试使用原生MySQL8.4.6任务专用库；不使用H2，不用Mock替代库存/锁/迁移。故障注入仅渠道端口或数据库临时CHECK，时间用Clock、竞争用latch，无sleep制造并发。
 
-当前JaCoCo实际LINE1197覆盖/119未覆盖（90.96%）、BRANCH467/164（74.01%）。未覆盖含bootstrap配置分支、禁用渠道、审计存储双重失败告警、部分防御性配置/容量边界及框架生成代码。核心成功、拒绝、回滚、并发行为有专项断言；不把覆盖率解释为生产安全保证。报告在app/build/reports/jacoco/test/html/index.html，测试HTML/XML在app/build/reports/tests/test和app/build/test-results/test。
+当前JaCoCo实际LINE1203覆盖/117未覆盖（91.14%）、BRANCH471/164（74.17%）。未覆盖含bootstrap配置分支、禁用渠道、审计存储双重失败告警、部分防御性配置/容量边界及框架生成代码。核心成功、拒绝、回滚、并发行为有专项断言；不把覆盖率解释为生产安全保证。报告在app/build/reports/jacoco/test/html/index.html，测试HTML/XML在app/build/reports/tests/test和app/build/test-results/test。
 
 运行命令与逐步演示、备份、恢复、回退均见[deployment.md](deployment.md)。本轮真实JAR演示不仅是MockMvc：购物车→两卖家拆单→模拟支付→发货收货→评价→内部结算→全额售后→负数调整，以及403/取消只回补一次/注销401。恢复前后全部表行数、订单明细合计和支付/退款/结算金额比较一致，V6兼容上一JAR启动后数据不变；不声称旧单商品二进制可回退。
 
@@ -43,3 +43,9 @@
 [Actions39257549748](https://github.com/Alpha234-s/CommuniBuy-by-ai/actions/runs/39257549748)成功，head035c21c与本地9191bfa树一致。记录见evidence/ci-container.json；不是本机执行Docker的声明。上轮Linux读取P95 53.07ms/201.59rps/0错误，也达到相同预设目标。最终本地JAR(evidence/performance-final.json)读取P95 22.44ms/616.69rps/0错误，与部署恢复证据JAR哈希一致。
 
 最终自审修复Gradle外部数据库测试缓存问题：所有Test不允许缓存/up-to-date复用，CI clean build --no-build-cache。修改后本地build与输入不变第二次:app:test均实际执行77项并全通过。最终CI证据在后续更新，不以当前旧head成功冒充新提交已运行。
+
+## 发布前审计修复（本地已通过，最后代码CI待验证）
+
+新增真实MySQL1062唯一冲突HTTP回归，证实客户端409而审计500，修正AuditAspect使DataIntegrityViolationException/ConcurrencyFailureException与全局409一致。原CHECK回滚测试未改断言；最初误用3819/HY000样例的判断与失败留痕见evidence/audit-regression-before.json，未将它伪装为原本409。最终本地78项（Reliability增至8）0失败/错误/跳过，格式/构建成功；不删除或放宽原77项。
+
+最新JAR SHA256对应evidence/performance-release.json、deployment-release.json：完整HTTP含10000成功/10001拒绝、权限/退款账务、备份恢复与兼容V6回退再次通过；读取P95 20.69ms/620.17rps/0错误，保留所有早期测量不覆盖。旧ci-proxy-boundary.json证明128k代理边界在JAR与Nginx后各运行一次；本次新增审计修复的最后CI仍单独等待，不把旧77测试称为新78运行。

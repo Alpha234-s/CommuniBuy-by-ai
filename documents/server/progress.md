@@ -114,3 +114,9 @@
 最终检查发现org.gradle.caching=true可能复用外部数据库测试结果，故Test禁止up-to-date和缓存，CI改clean build --no-build-cache。改后build实际77项全通过；输入完全不变再次:app:test仍打印77项PASSED并全通过，32秒，无FROM-CACHE或UP-TO-DATE测试。代码/SQL/接口未变；后续提交CI用于复核增强后的配置，不拿上轮结果冒充新运行。代理说明补区分local不解析转发头与deploy只可信代理场景。
 
 源码检查无mock token/固定订单身份/ddl-auto update/硬编码正式密码；未改webui。安全、事务、锁顺序、库存版本、幂等、状态、免费退款、聚合溢出、迁移历史、恢复防覆盖、代理脱敏、测试实际发现均自审；具体修复见各阶段记录。没有独立人工评审。未完成项保留在最终矩阵，主要是真实平台/公网证书/实际云库及部分售后功能，不以模拟或本机结果替代。
+
+## 发布前审计修复与78项验收
+
+发现审计未映射数据冲突409。调查最初把CHECK3819/HY000误当409，新增断言导致定向1项失败及全量77中1失败；核查后恢复原CHECK测试，不修改原回滚预期。改用真正的1062唯一冲突新增HTTP回归，先确认409/CONFLICT响应断言通过但同trace审计500失败（定向1失败），再修复AuditAspect的DataIntegrity/Concurrency分类。最终build实际78项0失败/错误/跳过，原77保持，发现门槛提高78；evidence/audit-regression-before.json保留纠正经过。
+
+新JAR实际再次跑完整HTTP（含最大Unicode描述）、固定目标读取压测P95 20.6892ms/620.1659rps/0错误，并在新建隔离schema生成完整账务后备份恢复、deploy启动及V6上一JAR回退均通过。对应performance-release.json/deployment-release.json，不覆盖之前的真实结果。JaCoCo1203覆盖/117未覆盖行、471/164分支。下一步上传本次修复并等待最后78项Linux/容器CI，再形成仅文档证据收尾提交与交付包；没有新的业务功能计划。

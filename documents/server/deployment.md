@@ -95,3 +95,25 @@ java -jar /releases/previous-v6-compatible.jar --spring.profiles.active=deploy
 ```
 
 不执行Flyway undo/drop；V4多明细后禁止回到只认单商品的旧写版本，V5后禁止无支付账本的旧版本。回退二进制也不应产生新数据损失；如必须恢复旧备份，先保留并对账备份后所有交易，由维护者决定停机切库，不能自动覆盖线上库。本轮只证明阶段5理解V6的JAR可在恢复库启动读取并保持数据；不证明任意历史版本可回退。MySQL DDL隐式提交，失败需针对已执行DDL人工处理。
+
+交付bundle包含本地8243529（阶段5）的完整源码，可在独立检出重建上一兼容JAR，避免依赖本机私有运行目录。以下从存放bundle的新工作目录执行；先检查这些新目录尚不存在，不修改当前检出：
+
+```bash
+git clone -b feat/backend-enterprise communibuy-enterprise.bundle communibuy
+git -C communibuy worktree add ../communibuy-v6-rollback 8243529
+cd communibuy-v6-rollback/server
+./gradlew :app:bootJar --no-daemon
+mkdir -p ../../releases
+cp app/build/libs/communibuy.jar ../../releases/previous-v6-compatible.jar
+# 另行加载恢复演练库的环境，停写后执行前述deploy启动命令。
+```
+
+这里bootJar只重建已经验收的旧源码，不把该命令描述为新一轮测试。若从个人fork克隆而不是本地bundle，阶段5对应远端9a5d591，提交映射见交付包commit-map.json。
+
+## 交付文件清单
+
+- communibuy-enterprise-delivery.zip：完整课程交付包，内部带校验清单。
+- communibuy-enterprise-source.zip：所有跟踪源码（前端原样保留）；communibuy-enterprise.bundle：本地分阶段提交历史；backend-enterprise.patch：相对团队e2991cd的差异。
+- communibuy.jar：已启动验证的可执行包；test-and-coverage-reports.zip、test-results.json：实际报告/用例清单。
+- documents/server与documents/database：API、配置部署、权限/ER/状态、迁移、真实证据、AI过程、验收矩阵；delivery-report.md与commit-map.json说明交付和远端映射。
+- SHA256SUMS：文件完整性；没有.env、运行密钥、SQL备份或生产数据。演示数据通过脚本生成，账号密码不打印。

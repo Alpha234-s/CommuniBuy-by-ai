@@ -44,8 +44,14 @@ public class AuditAspect {
       return result;
     } catch (Throwable error) {
       try {
-        sink.failure(
-            actor, action, resource, error instanceof BusinessException e ? e.getStatus() : 500);
+        int status =
+            error instanceof BusinessException e
+                ? e.getStatus()
+                : error instanceof org.springframework.dao.DataIntegrityViolationException
+                        || error instanceof org.springframework.dao.ConcurrencyFailureException
+                    ? 409
+                    : 500;
+        sink.failure(actor, action, resource, status);
       } catch (RuntimeException unavailable) {
         log.warn("Audit failure storage unavailable for action={}", action);
       }

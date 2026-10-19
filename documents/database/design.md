@@ -94,3 +94,11 @@ V3新增订单商品名称/描述及snapshot_source，旧记录不回填当前�
 新增categories、cart_entries、checkout_batches、order_lines；items.category_id可空关联分类，users.cart_version用于购物车并发确认，orders.checkout_id关联批次。购物车(user,item)、批次(user,幂等键)、明细(order,item)均唯一且有FK。历史单商品订单原值迁移为一条明细，不关联现目录补造名称。旧header的price*quantity=total约束替换为正数量/非负价格总额；每条明细仍由CHECK保证价格×数量，应用在同事务精确累加header与批次总额。
 
 V4后不能直接运行不理解order_lines的旧版本进行写入：会遗漏明细和多商品库存。需要回滚时停写、保留新交易，先部署理解V4的上一兼容应用；不得自动drop新表或恢复旧备份覆盖新交易。备份恢复与可回滚版本在阶段6演练。
+
+## 企业增量V5
+
+新增payments（order唯一）、refunds（order唯一、全额）、channel_events（kind/eventId主键与payload hash）、simulator_operations（模拟渠道持久幂等记录）、reviews（order/item唯一、评分CHECK）、finance_mutex、settlement_batches与settlement_entries。订单新增refunded_total及0≤退款≤订单总额CHECK。结算以generated sale_order_id唯一防重复SALE、refund_id唯一防重复退款调整，均用外键限制删除。
+
+不自动把历史paid状态伪造为支付记录。历史订单没有支付凭据时统计单列待对账数量，不能自动结算或退款。新支付/退款记录及通知事件在同业务事务内更新。模拟渠道只是数据库内隔离仿真，不代表外部网络/资金一致性已验证；接入真实平台需要完善持久化异步执行和晚到成功补偿。
+
+V5应用与V4及更早写版本不具备账务语义回退兼容；只能回滚到理解V5的版本。不要删除支付、退款、结算或审计交易记录。生产库迁移仍要求维护窗口、备份、复制库演练，不自动清库或逆向drop。

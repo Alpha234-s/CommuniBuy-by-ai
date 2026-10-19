@@ -32,13 +32,13 @@ public final class Dtos {
     }
     public record OrderView(long id, long itemId, String user, String owner, int quantity, int price, long total,
         String address, int status, long createTime, Long payTime, Long shipTime, Long receiptTime, Long closeTime,
-        long expiresAt, String refundStatus, String itemName, String itemDescription, String snapshotSource) {
+        long expiresAt, String refundStatus, String itemName, String itemDescription, String snapshotSource, long refundedTotal) {
         public static OrderView of(Order o, boolean addressVisible) { return new OrderView(o.getId(),o.getItemId(),o.getUserId(),o.getOwnerId(),
             o.getQuantity(),o.getPrice(),o.getTotal(),addressVisible ? o.getAddress() : null,o.getStatus(),o.getCreateTime(),o.getPayTime(),
-            o.getShipTime(),o.getReceiptTime(),o.getCloseTime(),o.getExpiresAt(),o.getRefundStatus(),o.getItemName(),o.getItemDescription(),o.getSnapshotSource()); }
+            o.getShipTime(),o.getReceiptTime(),o.getCloseTime(),o.getExpiresAt(),o.getRefundStatus(),o.getItemName(),o.getItemDescription(),o.getSnapshotSource(),o.getRefundedTotal()); }
     }
     public record PageView<T>(List<T> content, long count, int page, int size) {
         public static <T> PageView<T> of(Page<T> p) { return new PageView<>(p.getContent(),p.getTotalElements(),p.getNumber(),p.getSize()); }
     }
-    public record Stats(long userCount, long itemCount, long orderCount, long totalRevenue, long ongoingItemCount) {}
+    public record Stats(long userCount, long itemCount, long orderCount, java.math.BigInteger totalRevenue, long ongoingItemCount, java.math.BigInteger grossPaidAmount, java.math.BigInteger refundAmount, java.math.BigInteger netPaidAmount, long unreconciledPaidOrderCount) {}
 }

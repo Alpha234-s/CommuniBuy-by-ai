@@ -88,4 +88,14 @@ class CommerceIntegrationTest extends IntegrationSupport {
         assertThat(shop.cart(buyer).lines()).hasSize(1);
         request("buyer","POST","/api/v1/checkout",Map.of("address","bad", "cartVersion",0,"price",1)).andExpect(status().isBadRequest());
     }
+    @Test void lastUnitCartCheckoutsHaveOneWinnerAndPreserveLosingCart() throws Exception {
+        long item=item(1).id();var first=shop.cartChange(buyer,item,new CartChange(1,true));var second=shop.cartChange(outsider,item,new CartChange(1,true));
+        List<Boolean> result=race(List.of(()->tryCheckout(buyer,first.version(),"first"),()->tryCheckout(outsider,second.version(),"second")));
+        assertThat(result).containsExactlyInAnyOrder(true,false);assertThat(orders.count()).isEqualTo(1);assertThat(items.findById(item).orElseThrow().getStock()).isZero();
+        assertThat(shop.cart(buyer).lines().size()+shop.cart(outsider).lines().size()).isEqualTo(1);
+    }
+    boolean tryCheckout(hy.CommunityBuy.security.Actor actor,long version,String key){
+        try{shop.checkout(actor,checkout(version,199L),key);return true;}
+        catch(hy.CommunityBuy.exception.BusinessException e){assertThat(e.getStatus()).isEqualTo(409);return false;}
+    }
 }

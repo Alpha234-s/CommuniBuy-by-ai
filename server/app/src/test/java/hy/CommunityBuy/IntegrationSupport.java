@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 @SpringBootTest(properties={"app.jwt.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
-    "app.jwt.ttl-seconds=3600","app.orders.scheduling-enabled=false","app.auth.legacy-password-login=true"})
+    "app.payment.mode=simulator","app.payment.simulator-secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=","app.jwt.ttl-seconds=3600","app.orders.scheduling-enabled=false","app.auth.legacy-password-login=true"})
 @AutoConfigureMockMvc @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(IntegrationSupport.TimeConfig.class)
 abstract class IntegrationSupport {

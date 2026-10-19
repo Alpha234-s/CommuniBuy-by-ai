@@ -28,4 +28,5 @@ public class Order {
     @Column(nullable = false,length = 24) private String snapshotSource = "LEGACY_UNKNOWN";
     @Column(nullable = false, length = 24) private String refundStatus = "NONE";
     @Column(length=36) private String checkoutId;
+    @Column(nullable=false) private Long refundedTotal = 0L;
 }

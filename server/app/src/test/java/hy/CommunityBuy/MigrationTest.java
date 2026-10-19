@@ -8,9 +8,9 @@ class MigrationTest {
     @Test void emptyDatabaseMigratesEveryVersion() {
         var flyway=Flyway.configure().dataSource(db.url(),db.user(),db.password()).cleanDisabled(false).load();
         flyway.clean();
-        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(4);
+        assertThat(flyway.migrate().migrationsExecuted).isEqualTo(5);
         flyway.validate();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
     }
     @Test void legacySqlSchemaBaselineRetainsAccountsAndConvertsInventoryAndSnapshots() throws Exception { verifyLegacy(false); }
     @Test void legacyHibernateWidthsAndUnsignedTypesMigrate() throws Exception { verifyLegacy(true); }

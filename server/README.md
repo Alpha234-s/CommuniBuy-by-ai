@@ -94,3 +94,13 @@ python3 scripts/demo.py
 - 正式交付前需部署 HTTPS、配置允许的前端源/反向代理，并按课程实际部署增加登录限流及运维监控；本次未实现这些外围能力。跨域配置目前没有开放，建议前后端同源代理 `/api`。
 
 本次实际运行结果见 [验收记录](../documents/server/verification.md)。已有库必须先阅读[迁移说明](../documents/database/design.md)，不得用重建数据库替代升级。
+
+## 企业商城增量（以progress.md验收状态为准）
+
+新增分类、购物车勾选结算、按卖家拆单及明细、独立模拟支付、全额售后审核/退款重试、完成后评价与内部结算。使用`python3 scripts/commerce-demo.py`演示完整流程；旧demo.py仍可验证兼容接口。
+
+支付默认禁用。仅本地课程演示显式设置`PAYMENT_MODE=simulator`、`PAYMENT_SIM_SECRET`（独立生成的至少32随机字节Base64）及`PAYMENT_MERCHANT`。`.env.example`只给空密钥，必须自己填写。`deploy` profile禁止模拟渠道，当前没有任何真实支付平台凭据或真实沙箱验收。
+
+响应新增code与traceId，`X-Trace-Id`用于排障；管理员可获取`/v3/api-docs`，UI默认关闭。JaCoCo报告位于`app/build/reports/jacoco/test/html/index.html`，完整依赖锁为`app/gradle.lockfile`。新增/升级依赖需执行`./gradlew build --write-locks`并提交锁文件，不能只修改版本声明。
+
+阶段、提交、自审、准确测试数量和限制见[进度记录](../documents/server/progress.md)，AI过程见[真实开发记录](../documents/server/ai-development-log.md)。原先验收记录是上一轮交付，不冒充本轮新增商城验收。

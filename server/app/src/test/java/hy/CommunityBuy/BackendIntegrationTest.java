@@ -24,9 +24,6 @@ import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-@SpringBootTest(properties={
-    "app.jwt.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
-    "app.jwt.ttl-seconds=3600", "app.orders.scheduling-enabled=false", "app.auth.legacy-password-login=true"})
 @AutoConfigureMockMvc @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(IntegrationSupport.TimeConfig.class)
 class BackendIntegrationTest extends IntegrationSupport {    @Test void missingForgedAndLegacyTokensAreRejected() throws Exception {
@@ -208,7 +205,7 @@ class BackendIntegrationTest extends IntegrationSupport {    @Test void missingF
 
     @Test void sellerCancellationOfPaidOrderRecordsRefundAndExcludesRevenue() {
         long item=item(1).id(), id=order(item,"refund").id(); orderService.action(buyer,id,"pay");
-        assertThat(admin.stats(administrator).totalRevenue()).isEqualTo(199);
+        assertThat(admin.stats(administrator).totalRevenue()).isEqualTo(java.math.BigInteger.valueOf(199));
         var cancelled=orderService.action(seller,id,"cancel"); assertThat(cancelled.refundStatus()).isEqualTo("SIMULATED_REFUNDED");
         orderService.action(seller,id,"cancel"); assertThat(admin.stats(administrator).totalRevenue()).isZero();
         assertThat(items.findById(item).orElseThrow().getStock()).isEqualTo(1);
@@ -231,7 +228,7 @@ class BackendIntegrationTest extends IntegrationSupport {    @Test void missingF
         var page2=data(request("buyer","GET","/api/v1/item?keyword=Apples&owner=seller&status=0&size=1&page=1",null));
         assertThat(page2.get("content").get(0).get("id").asLong()).isLessThan(list.get("content").get(0).get("id").asLong());
         var stats=admin.stats(administrator); assertThat(stats.userCount()).isEqualTo(4); assertThat(stats.orderCount()).isEqualTo(3);
-        assertThat(stats.totalRevenue()).isEqualTo(199); assertThat(stats.ongoingItemCount()).isEqualTo(3);
+        assertThat(stats.totalRevenue()).isEqualTo(java.math.BigInteger.valueOf(199)); assertThat(stats.ongoingItemCount()).isEqualTo(3);
         clock.now.set(clock.instant().plusSeconds(100));
         itemService.create(seller,new NewItem("Future",null,1,1,0,clock.instant().getEpochSecond()+10,null));
         itemService.create(seller,new NewItem("Ended",null,1,1,0,0L,1L));

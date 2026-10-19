@@ -4,7 +4,7 @@ final class TestDatabase {
     private TestDatabase() {}
     static void reset(org.springframework.jdbc.core.JdbcTemplate jdbc) {
         if(!"communibuy_test".equals(jdbc.queryForObject("select database()",String.class)))throw new IllegalStateException("Not the disposable business test schema");
-        for(String table:java.util.List.of("order_lines","cart_entries","orders","checkout_batches","items","categories","blacklist","users"))jdbc.update("DELETE FROM "+table);
+        for(String table:java.util.List.of("channel_events","simulator_operations","settlement_entries","settlement_batches","reviews","refunds","payments","order_lines","cart_entries","orders","checkout_batches","items","categories","blacklist","users"))jdbc.update("DELETE FROM "+table);
     }
     record Connection(String url,String user,String password) {}
     static Connection connect(boolean migration) {

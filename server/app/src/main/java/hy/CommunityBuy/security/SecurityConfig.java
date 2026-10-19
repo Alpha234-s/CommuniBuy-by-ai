@@ -54,7 +54,7 @@ public class SecurityConfig {
     @Bean SecurityFilterChain security(HttpSecurity http, JwtDecoder decoder, UserRepository users, ObjectMapper json) throws Exception {
         http.csrf(x -> x.disable()).sessionManagement(x -> x.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(x -> x
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth", "/api/v1/auth/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth", "/api/v1/auth/register", "/api/v1/payments/simulator/notify", "/api/v1/refunds/simulator/notify").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .exceptionHandling(x -> x

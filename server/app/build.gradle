@@ -37,6 +37,24 @@ tasks.withType(Test).configureEach {
     testLogging { events 'passed', 'skipped', 'failed'; exceptionFormat 'short' }
     // Integration tests fail if neither Docker nor an explicitly isolated MySQL is available.
     environment 'TEST_DB_URL', System.getenv('TEST_DB_URL') ?: ''
+    afterSuite { suite, result ->
+        if (suite.parent == null && (result.testCount == 0 || result.skippedTestCount > 0)) {
+            throw new GradleException("${name}: no tests discovered or tests skipped; inspect the test report")
+        }
+    }
+}
+tasks.named('test') {
+    description = 'Fast unit tests; no Docker or database required.'
+    useJUnitPlatform { excludeTags 'mysql' }
+}
+tasks.register('integrationTest', Test) {
+    description = 'All real MySQL tests (Docker or authorized disposable schemas required).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform { includeTags 'mysql' }
+    testLogging { exceptionFormat 'full' }
+    shouldRunAfter test
 }
 bootJar { archiveFileName = 'communibuy.jar' }
 jar { enabled = false }
@@ -47,10 +65,10 @@ tasks.withType(AbstractArchiveTask).configureEach {
 
 jacoco { toolVersion = '0.8.15' }
 tasks.named('jacocoTestReport') {
-    dependsOn test
+    dependsOn test, integrationTest
+    executionData test, integrationTest
     reports { xml.required = true; html.required = true }
 }
-tasks.named('test') { finalizedBy jacocoTestReport }
 
 configurations { formatter }
 dependencies { formatter 'com.google.googlejavaformat:google-java-format:1.28.0:all-deps' }
@@ -63,5 +81,11 @@ def configureFormatter = { task, replace ->
 }
 tasks.register('formatJava', JavaExec) { configureFormatter(delegate, true) }
 tasks.register('formatCheck', JavaExec) { configureFormatter(delegate, false) }
-tasks.named('check') { dependsOn formatCheck }
+tasks.named('check') { dependsOn formatCheck, integrationTest, jacocoTestReport }
+
+tasks.register('devJar') {
+    group = 'build'
+    description = 'Build a debugging JAR only; does NOT run tests or complete acceptance.'
+    dependsOn bootJar
+}
 tasks.withType(JavaCompile).configureEach { options.compilerArgs += ['-Xlint:unchecked', '-Werror'] }

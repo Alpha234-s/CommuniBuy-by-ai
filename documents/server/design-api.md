@@ -121,6 +121,8 @@ OrderView新增itemName、itemDescription、snapshotSource（AT_CREATION/LEGACY_
 
 内部结算仅处理已完成、未退款、无处理中售后且有成功支付记录的订单，不代表银行打款。每订单SALE唯一；已结算后退款生成唯一负数REFUND调整，下一批可能为负，表示应扣回账款。退款与结算共享数据库账务锁，所有相关路径先取得账务锁再取得商品/订单/外键隐式锁。每次最多纳入100张新订单/200条待结算明细；超过Long批次净额容量时保留剩余到下一批，不截断溢出。
 
+评价与直接下单/购物车结算统一按当前用户→商品ID升序→订单取得锁；评价插入的用户外键检查不能反向等待用户锁。评价入口在事务内复查用户未封禁。此并发修复不改变请求、响应或前端契约；finance_mutex保持原账务顺序。
+
 统计保留totalRevenue为状态1/2/3订单总额，新增grossPaidAmount（成功支付累计）、refundAmount（成功退款累计）、netPaidAmount（前两者之差）及unreconciledPaidOrderCount（缺支付凭据的历史已付订单数）。这些不是利润或抽佣，内部结算不改变平台支付净额。
 
 ### 模拟渠道通知（无需用户Bearer，但必须有效签名）

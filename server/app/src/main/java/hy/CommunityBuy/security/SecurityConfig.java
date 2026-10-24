@@ -23,6 +23,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
+@org.springframework.boot.context.properties.EnableConfigurationProperties(
+    RevocationCleanupProperties.class)
 public class SecurityConfig {
   @Bean
   Clock clock() {

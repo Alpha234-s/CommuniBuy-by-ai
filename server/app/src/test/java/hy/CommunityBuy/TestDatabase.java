@@ -1,5 +1,7 @@
 package hy.CommunityBuy;
 
+import java.util.*;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 
 final class TestDatabase {
@@ -31,22 +33,48 @@ final class TestDatabase {
   record Connection(String url, String user, String password) {}
 
   static Connection connect(boolean migration) {
-    String env = migration ? "TEST_MIGRATION_DB_URL" : "TEST_DB_URL";
-    String url = System.getenv(env);
-    if (url != null && !url.isBlank()) {
-      String database = migration ? "communibuy_migration_test" : "communibuy_test";
-      if (!"yes".equals(System.getenv("ALLOW_TEST_DB_RESET"))
-          || !url.matches("jdbc:mysql://[^/]+/" + database + "(\\?.*)?"))
+    var external = external(System.getenv(), migration);
+    if (external.isPresent()) {
+      var db = external.get();
+      try (var ignored = java.sql.DriverManager.getConnection(db.url(), db.user(), db.password())) {
+        return db;
+      } catch (java.sql.SQLException unavailable) {
         throw new IllegalStateException(
-            "Use an isolated " + database + " and ALLOW_TEST_DB_RESET=yes");
-      return new Connection(url, System.getenv("TEST_DB_USER"), System.getenv("TEST_DB_PASSWORD"));
+            "Cannot connect to disposable MySQL; check TEST_DB_URL, TEST_MIGRATION_DB_URL and"
+                + " TEST_DB_USER/TEST_DB_PASSWORD. No tests were skipped.");
+      }
     }
-    if (System.getenv("TEST_DB_URL") != null && !System.getenv("TEST_DB_URL").isBlank())
-      throw new IllegalStateException("TEST_MIGRATION_DB_URL is required with external MySQL");
+    if (!DockerClientFactory.instance().isDockerAvailable())
+      throw new IllegalStateException(
+          "Docker is unavailable. Start Docker, or configure both TEST_DB_URL (communibuy_test) and"
+              + " TEST_MIGRATION_DB_URL (communibuy_migration_test), TEST_DB_USER/TEST_DB_PASSWORD"
+              + " and ALLOW_TEST_DB_RESET=yes. No tests were skipped.");
     var mysql =
         new MySQLContainer<>("mysql:8.4.6")
             .withDatabaseName(migration ? "communibuy_migration_test" : "communibuy_test");
     mysql.start();
     return new Connection(mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword());
+  }
+
+  static Optional<Connection> external(Map<String, String> env, boolean migration) {
+    String business = env.getOrDefault("TEST_DB_URL", ""),
+        upgrade = env.getOrDefault("TEST_MIGRATION_DB_URL", "");
+    if (business.isBlank() && upgrade.isBlank()) return Optional.empty();
+    if (business.isBlank() || upgrade.isBlank())
+      throw new IllegalStateException(
+          "Both TEST_DB_URL and TEST_MIGRATION_DB_URL are required with external MySQL");
+    if (!"yes".equals(env.get("ALLOW_TEST_DB_RESET"))
+        || !business.matches("jdbc:mysql://[^/]+/communibuy_test(\\?.*)?")
+        || !upgrade.matches("jdbc:mysql://[^/]+/communibuy_migration_test(\\?.*)?"))
+      throw new IllegalStateException(
+          "Use isolated communibuy_test and communibuy_migration_test schemas and"
+              + " ALLOW_TEST_DB_RESET=yes");
+    if (env.getOrDefault("TEST_DB_USER", "").isBlank()
+        || env.getOrDefault("TEST_DB_PASSWORD", "").isBlank())
+      throw new IllegalStateException(
+          "TEST_DB_USER and TEST_DB_PASSWORD must be configured for disposable MySQL");
+    return Optional.of(
+        new Connection(
+            migration ? upgrade : business, env.get("TEST_DB_USER"), env.get("TEST_DB_PASSWORD")));
   }
 }

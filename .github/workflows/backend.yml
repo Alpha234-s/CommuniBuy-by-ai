@@ -7,6 +7,21 @@ on:
 permissions:
   contents: read
 jobs:
+  windows-compile:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile main and test sources only (no database acceptance)
+        run: .\gradlew.bat :app:classes :app:testClasses --no-daemon
   mysql-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20

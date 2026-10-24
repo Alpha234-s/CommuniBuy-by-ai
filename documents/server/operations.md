@@ -18,3 +18,17 @@ curl -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8080/actuator/prom
 Micrometer输出HTTP数量/耗时、JVM、Hikari连接和限流拒绝计数；业务trace在日志和审计，不作为高基数metrics标签。Prometheus使用独立管理员短期令牌bearer_token_file并在到期前轮换，凭据不提交仓库；本版未部署Grafana或自动刷新监控令牌。默认连接池2～10，获取连接超时10s，可用DB_POOL_MIN/MAX配置。V6增加订单/支付/退款/用户管理及审计索引；组合查询由数据库分页，JPA Criteria/JDBC占位参数，无用户字符串拼接SQL。
 
 CI运行Java编译unchecked警告视为错误、固定版本google-java-format格式检查、全部真实MySQL集成测试、测试发现/零跳过检查、JaCoCo、JAR全流程和预设目标读取压测。未执行的远程CI不能标通过。覆盖率用于定位缺口，不以数字替代事务不变量验证；实际结果见最终验收报告。
+
+## 安全异常排障
+
+按响应头/响应体`traceId`检索`event=api.unexpected`（500）或`event=api.conflict`（409）。结构化诊断记录异常全类名、最多8层原因类型、每层抛出位置及至多4个堆栈位置（`类#方法:源码行号`）；SQL仅记录整数vendor和合法5字符SQLState。循环原因链会截断，不输出原始message、toString、suppressed内容、SQL文本/参数或Throwable对象；因此日志不含框架自动打印的原始原因消息。结合相同版本源码定位，必要时在隔离测试复现，不能为排障直接开启请求体/绑定值日志。
+
+Hibernate原始SqlExceptionHelper、SQL及bind类别在默认配置关闭，避免其绕过安全渲染输出数据库中的私密值。部署者不要提高这些类别至DEBUG/TRACE或开启show-sql。这里是当前受控日志策略，不声称任意第三方自定义日志也会自动脱敏。客户端仍只收到原有安全错误码、消息和trace，无堆栈/API兼容变化。
+
+订单超时扫描与逐单失败均使用同一安全诊断；每轮无HTTP上下文时生成trace，结束后清理或恢复原MDC。扫描失败留待下一轮；单个订单失败不阻断其余订单。审计存储失败也记录安全位置/原因类型，不覆盖原业务异常。SafeDiagnosticsTest捕获真实HTTP过滤器/异常处理日志及定时任务日志，覆盖消息、SQL原因链、密码、完整令牌、地址、正文/查询不泄漏与循环/深链边界。
+
+## 吊销记录保留与清理
+
+`blacklist.token_hash`保存随机jti，expire_at为UTC秒。清理边界是`expire_at <= Clock.now`，与JWT校验`exp > now`一致。启动补偿一批，此后固定delay（默认60秒），一次按expiry/PK稳定顺序删除最多500行。复用`ix_blacklist_expiry`，每批REQUIRES_NEW、READ_COMMITTED事务；多实例可重复处理，无进程内无限循环。积压继续下轮，删除失败整批回滚并留安全trace日志，下轮重试。配置范围见README，配置无效即使关闭调度也启动失败。
+
+`event=auth.revocations.cleanup`只记录删除数量和trace；`auth.revocations.deferred`记录安全原因类型/位置，不记录jti或令牌。清理只去除已失去认证效力的记录，不代表清理用户会话或提前恢复权限。JWT过期检查、用户封禁和authVersion检查保持原样。无新迁移，已部署V1..V6一律不修改；不要手工清空blacklist来“修复”故障。

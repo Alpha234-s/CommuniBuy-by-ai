@@ -53,7 +53,11 @@ public class AuditAspect {
                     : 500;
         sink.failure(actor, action, resource, status);
       } catch (RuntimeException unavailable) {
-        log.warn("Audit failure storage unavailable for action={}", action);
+        log.warn(
+            "event=audit.storage action={} traceId={} diagnostic={}",
+            action,
+            MDC.get("traceId"),
+            SafeDiagnostics.describe(unavailable));
       }
       throw error;
     }

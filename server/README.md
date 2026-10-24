@@ -54,7 +54,21 @@ java -jar app/build/libs/communibuy.jar --spring.profiles.active=bootstrap
 
 启动时插入新管理员；重复 ID 会失败，不会覆盖或提升已有账号。初始化成功后停止进程、清除这两个环境变量，再按普通模式启动。绝不将该 profile 长期开启或把密码写入命令/仓库。正式环境由维护者在维护窗口执行。
 
-## 测试
+## 编译、分层测试与质量检查
+
+以下命令均在 `server/` 执行，Windows将`./gradlew`换为`.\gradlew.bat`，使用JDK21。
+
+| 用途 | 命令 | 数据库要求 |
+| --- | --- | --- |
+| 只编译主代码与测试代码 | `./gradlew :app:classes :app:testClasses` | 无 |
+| 快速单元测试 | `./gradlew :app:test` | 无Docker/数据库配置也可运行 |
+| 真实MySQL集成测试 | `./gradlew :app:integrationTest` | Docker或显式授权的两个专用schema |
+| 仅格式检查/修正 | `./gradlew :app:formatCheck` / `./gradlew :app:formatJava` | 无 |
+| 完整质量检查 | `./gradlew :app:check --no-build-cache`，随后`python3 scripts/check-tests.py` | 包含单测、全部MySQL测试、格式与合并JaCoCo |
+| 完整交付构建 | `./gradlew clean build --no-build-cache`，随后`python3 scripts/check-tests.py` | 同上，另生成JAR |
+| 仅开发调试JAR | `./gradlew :app:devJar` | 无；**未运行测试，不代表完成验收** |
+
+全部测试仍放同一source set，以继承的`@Tag("mysql")`划分；新增数据库测试必须标注该标签或继承IntegrationSupport。`test`不再包含数据库测试，是开发命令的兼容性变化；完整`check/build`仍包含两层，禁止以`-x integrationTest`获得验收。Windows CI仅编译两套源码，不能表示Windows数据库测试通过；Linux CI执行全部MySQL及原有JAR/容器代理验收。
 
 Linux `./gradlew clean build`；Windows `.\gradlew.bat clean build`。默认 Testcontainers 自动启动两个独立 `mysql:8.4.6` 容器，分别验业务及旧库迁移，要求可用的 Docker daemon。缺少 Docker 会失败，不会静默跳过。
 
@@ -72,7 +86,7 @@ python3 scripts/check-tests.py
 
 PowerShell 使用 `$env:变量名='值'` 设置同名变量，再运行 `.\gradlew.bat clean build`、`python scripts/check-tests.py`。测试 URL 必须指向上述准确库名，并且显式启用 reset。不要在普通应用启动时设置测试变量，也不要把测试 JWT 密钥用到正式运行。
 
-JUnit Platform 已显式启用。报告为 `app/build/reports/tests/test/index.html`，机器可读结果为 `app/build/test-results/test/TEST-*.xml`。CI 同时检查测试发现数量和零跳过，上传报告与可执行 JAR，并启动 JAR 执行 HTTP 演示。
+JUnit Platform显式启用；单测报告`app/build/reports/tests/test/index.html`，MySQL报告`app/build/reports/tests/integrationTest/index.html`；对应XML分别在`app/build/test-results/test/`及`integrationTest/`。`jacocoTestReport`合并两层且依赖两层执行；单独运行快速test不会被报告任务隐式带入数据库测试。CI上传整个tests/test-results/jacoco目录，不丢失集成报告。check-tests.py默认要求两层及关键套件、禁止重复计数、失败/错误/跳过；`--task test`或`--task integrationTest`只检查单层，不代表全量验收。数据库任务禁止缓存/UP-TO-DATE；缺Docker或缺少/错误专用数据库配置明确失败，不静默跳过。
 
 ## 可复现业务演示
 

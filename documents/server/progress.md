@@ -136,3 +136,5 @@
 阶段1进行中：基线JDK21主/测试编译通过；新增真实MySQL受控锁交错2项在修复前均失败，均出现1213/40001死锁。评价持商品/订单后插入reviews的users外键，与下单/结算用户→商品相反。现已调整评价用户→商品→订单，等待修复后验证及全量回归；其余阶段尚未实施。
 
 阶段1已验收：修复后build/formatCheck/JaCoCo与check-tests.py实际80项全通过，0失败/错误/跳过；两新增交错及原78项全部运行。自审和修复前后证据见quality-hardening.md。进入阶段2测试分层与CI，不修改商城功能。
+
+阶段2本地已验收：无DB配置的Windows编译/6单测/调试JAR成功；无Docker负向探测明确失败、0跳过；配置正确后clean build完整执行6单测+80MySQL=86全通过。更新发现检查、合并JaCoCo、报告说明、协作基线和Windows编译CI。远程Windows/Linux新CI待运行，状态保留；本地验收允许进入阶段3日志。证据quality-phase2.json。

@@ -5,7 +5,7 @@
 | 要求 | 实现位置 | 验收标准/状态 |
 | --- | --- | --- |
 | 评价/直接下单/结算锁顺序 | OrderService、ShopService；ReviewLockIntegrationTest | 已完成：修复前2失败均1213/40001；修复后80项全量通过 |
-| 测试分层及CI | Gradle、check-tests.py、backend.yml | 无库编译/单测，完整check含全部MySQL，Windows编译及Linux全量；待实施 |
+| 测试分层及CI | Gradle、check-tests.py、backend.yml | 本地通过：单测6+MySQL80；Windows无库编译/单测可用；新增Windows CI，远程待运行 |
 | 安全异常诊断 | ApiErrors、定时任务 | trace、定位、原因类型可查，消息及请求秘密不泄漏；待实施 |
 | 过期吊销清理 | BlacklistRepository、定时任务 | 索引分批、有界、Clock边界、未过期吊销和JWT过期均有效；待实施 |
 
@@ -22,6 +22,16 @@
 自审：create/checkout/cartChange已有用户→商品（商品升序）；review是本次复现的反向用户外键路径，现保持相同顺序且复查封禁。支付记录无用户外键；账务相关仍先finance_mutex，不增加用户显式锁。不改数据库结构/历史迁移/API/前端；额外用户锁只在评价事务中串行同用户写操作。没有独立人工评审。
 
 ## 后续技术债（只评估）
+
+## 阶段2验收与自审
+
+阶段1提交`9112e87`。保留同一source set，通过mysql标签分层，父fixture标签继承，AuthPolicy/Migration独立标注。`test`仅单元；`integrationTest`真实数据库；`check/build/jacocoTestReport`均显式依赖两层。Test禁止缓存/UP-TO-DATE，根套件0发现或存在跳过直接失败。CI检查两份XML与关键suite、数量下限和跨层重复，报告上传原目录通配已覆盖新路径。
+
+无任何TEST_DB配置实际运行Windows `gradlew.bat :app:formatJava :app:classes :app:testClasses :app:test :app:devJar --no-build-cache`成功：6项单测，0失败/错误/跳过；不触发integrationTest或报告依赖。新单测验证金额/数量溢出、BCrypt UTF8字节边界与专用库双URL/重置授权/凭据/库名保护。原生数据库验收另行执行，不把编译或调试JAR当验收。
+
+故意清除数据库配置、无Docker运行`:app:integrationTest --tests '*MigrationTest'`，按预期3项初始化失败、0跳过；根原因明确Docker unavailable及完整TEST_DB配置方法。该负向探测不是通过的业务测试。随后正确专用库配置`gradlew.bat clean build --no-build-cache`成功：单测6+MySQL80=86、0失败/错误/跳过，脚本复核通过；两个JaCoCo exec实际生成并合并，证据[quality-phase2.json](evidence/quality-phase2.json)。
+
+自审：取消test的报告finalizer，防止快速单测被报告依赖带入MySQL；完整check显式包含报告及集成，防止移出默认任务漏测。环境缺失与连接失败不输出URL/凭据；原reset精确schema保护保留并补双URL和非空凭据校验。CI新增Windows+JDK21只编译，Linux保留完整MySQL/JAR/容器/代理；本轮远程尚未运行，不能拿旧78项CI替代。依赖/SQL/API未变化；开发者原`:app:test`命令现仅单测，前端无需调整。
 
 支付/退款渠道调用仍在持锁事务中。接真实渠道前必须设计持久化操作意图、结果未知查询与对账，以及外部成功而本地回滚的补偿；模拟事务不能证明远端原子性。本轮不改变交易语义。
 

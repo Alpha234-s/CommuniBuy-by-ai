@@ -38,6 +38,7 @@ import org.springframework.test.web.servlet.*;
       "app.auth.legacy-password-login=true"
     })
 @AutoConfigureMockMvc
+@Tag("mysql")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(IntegrationSupport.TimeConfig.class)
 abstract class IntegrationSupport {

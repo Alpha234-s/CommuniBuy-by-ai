@@ -138,3 +138,5 @@
 阶段1已验收：修复后build/formatCheck/JaCoCo与check-tests.py实际80项全通过，0失败/错误/跳过；两新增交错及原78项全部运行。自审和修复前后证据见quality-hardening.md。进入阶段2测试分层与CI，不修改商城功能。
 
 阶段2本地已验收：无DB配置的Windows编译/6单测/调试JAR成功；无Docker负向探测明确失败、0跳过；配置正确后clean build完整执行6单测+80MySQL=86全通过。更新发现检查、合并JaCoCo、报告说明、协作基线和Windows编译CI。远程Windows/Linux新CI待运行，状态保留；本地验收允许进入阶段3日志。证据quality-phase2.json。
+
+阶段3已验收：SafeDiagnostics安全原因链/代码位置、HTTP与任务trace、后台扫描/逐单及审计降级定位；默认关闭原始Hibernate SQL/bind异常日志。新增4项日志捕获与边界测试，完整build实际10单测+80MySQL=90全通过、0失败/错误/跳过；证据quality-phase3.json。进入阶段4，V2已有expire_at索引但当前确无吊销清理任务。

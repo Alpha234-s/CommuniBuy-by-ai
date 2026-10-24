@@ -110,7 +110,7 @@ python3 scripts/demo.py
 - 实现为单体数据库事务；支持多个任务重复执行，不需要 Redis、消息队列或分布式锁。未接微信、短信、真实支付/退款、物流、上传；没有实现物理删除账号/商品/订单。
 - 已实现登录/写入限流、受保护Actuator/Prometheus、精确CORS和审计，见[运行安全](../documents/server/operations.md)。HTTPS和反向代理部署见阶段6说明；优先同源 `/api`。
 
-本次实际运行结果见 [验收记录](../documents/server/verification.md)。已有库必须先阅读[迁移说明](../documents/database/design.md)，不得用重建数据库替代升级。
+原型加固历史结果见[旧验收记录](../documents/server/verification.md)，本轮100项及Windows/Linux CI见[质量加固验收](../documents/server/quality-hardening.md)。已有库必须先阅读[迁移说明](../documents/database/design.md)，不得用重建数据库替代升级。
 
 ## 企业商城增量（以progress.md验收状态为准）
 

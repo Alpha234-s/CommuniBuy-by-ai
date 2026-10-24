@@ -5,7 +5,7 @@
 | 要求 | 实现位置 | 验收标准/状态 |
 | --- | --- | --- |
 | 评价/直接下单/结算锁顺序 | OrderService、ShopService；ReviewLockIntegrationTest | 已完成：修复前2失败均1213/40001；修复后80项全量通过 |
-| 测试分层及CI | Gradle、check-tests.py、backend.yml | 本地通过：单测6+MySQL80；Windows无库编译/单测可用；新增Windows CI，远程待运行 |
+| 测试分层及CI | Gradle、check-tests.py、backend.yml | 最终16单测+84MySQL全通过；本轮Windows编译CI及Linux全量/部署CI成功 |
 | 安全异常诊断 | ApiErrors、SafeDiagnostics、定时任务 | 已完成：10单测+80MySQL全部通过；4日志测试覆盖trace/定位/脱敏/任务恢复 |
 | 过期吊销清理 | BlacklistRepository、RevocationCleanup、配置 | 已完成：16单测+84MySQL=100全通过；索引/Clock/回滚/并发/401均验证 |
 
@@ -52,3 +52,15 @@
 支付/退款渠道调用仍在持锁事务中。接真实渠道前必须设计持久化操作意图、结果未知查询与对账，以及外部成功而本地回滚的补偿；模拟事务不能证明远端原子性。本轮不改变交易语义。
 
 finance_mutex仍串行不同卖家的账务操作。后续先测支付/退款/结算混合负载、锁等待与P95，再评估按卖家等缩小锁范围；必须涵盖跨卖家操作和退款/结算不变量，本轮不删除、不替换。
+
+## 最终验证与交付
+
+代码提交：`9112e87`锁顺序；`370a2fe`测试分层；`eca31d7`安全日志；`c1bfa79`吊销清理。最后为证据文档收尾提交，不修改运行代码。任务分支`fix/backend-quality-hardening`已正常推送个人fork；团队main、feat/backend和原任务分支均未修改/合并/强推。
+
+本轮[Actions40078081194](https://github.com/Alpha234-s/CommuniBuy-by-ai/actions/runs/40078081194)以c1bfa797fc8360667046df703e4079ae78c16a30代码实际成功：Windows JDK21主/测试源码编译；Linux100测试（16单元+84真实MySQL）、0失败/错误/跳过、格式/发现检查/合并覆盖率、JAR模拟闭环、Docker UID10001与Nginx代理后闭环及配置检查全部通过。日志100条PASSED与汇总对应，证据[quality-ci.json](evidence/quality-ci.json)。Windows CI没有运行数据库；本机Windows另以原生MySQL8.4.6运行100项，不混淆两者。
+
+本机同代码JAR实际启动并通过commerce-demo.py全流程，启动清理9条已到期演示吊销；没有输出jti/令牌。JAR SHA256 `75b9bbaefdb58a44024f9db157dd5eb17eba577e99d3aa0b55e7e8e3d3086a71`，见[quality-runtime.json](evidence/quality-runtime.json)。JaCoCo合并LINE1289覆盖/108未覆盖（92.27%）、BRANCH503/168（74.96%）；未覆盖包括遗留缺明细处理、部分金额溢出防御、Bootstrap配置、部分controller入口与服务直调防御分支，不用覆盖数代替业务不变量。CI沿用读取基准183.29rps/P95 56.43ms/0错误，只作现有读取回归，没有新增账务混合负载数据。
+
+无HTTP接口/DTO/状态/数据库结构变化，前端无需适配。开发命令变化：`:app:test`仅单测；完整验收使用`:app:check`或`clean build --no-build-cache`加`python3 scripts/check-tests.py`，详见server/README。新清理环境变量在.env.example/Compose中透传，旧部署不设置则使用已校验默认值。V1..V6原文件不变、迁移3项本轮本机和Linux均通过；本轮未重演备份恢复/版本回退，不把旧部署证据冒充新运行。
+
+[个人fork Draft PR #2](https://github.com/Alpha234-s/CommuniBuy-by-ai/pull/2)的base为feat/backend-enterprise399df3d，与团队feat/backend相同，只有本轮增量。向团队feat/backend创建PR被GitHub集成返回403 Resource not accessible by integration；未在团队创建，不绕过权限、不自动合并。维护者可将该分支开至团队feat/backend并独立评审。本轮没有人工外审；真实平台、未知外部支付结果补偿、账务锁混合写性能仍为明确边界。

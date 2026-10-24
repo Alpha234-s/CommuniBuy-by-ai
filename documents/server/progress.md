@@ -142,3 +142,5 @@
 阶段3已验收：SafeDiagnostics安全原因链/代码位置、HTTP与任务trace、后台扫描/逐单及审计降级定位；默认关闭原始Hibernate SQL/bind异常日志。新增4项日志捕获与边界测试，完整build实际10单测+80MySQL=90全通过、0失败/错误/跳过；证据quality-phase3.json。进入阶段4，V2已有expire_at索引但当前确无吊销清理任务。
 
 阶段4本地已验收：新增有界索引清理、校验配置、Clock及安全任务日志，复用V2无新迁移。6新单测+4新MySQL，最终clean build实际16+84=100全通过、0失败/错误/跳过，check-tests.py通过；记录首次泛型编译失败及触发器权限1419后改真实FK故障注入，不放宽回滚断言。证据quality-phase4.json。四阶段本地验收完成，接下来交付分支/Draft PR并核实新Windows/Linux CI及JAR启动，不以旧CI充数。
+
+本轮最终验收完成（代码c1bfa79）：Actions40078081194真实success，Windows JDK21主/测试编译、Linux100项零失败/错误/跳过、JAR/Docker非root/Nginx后全流程均通过，quality-ci.json。新JAR本机完整commerce-demo通过，启动清理9条到期演示吊销，quality-runtime.json；未接真实支付。四阶段提交9112e87/370a2fe/eca31d7/c1bfa79已推个人fork同名分支；Draft PR #2基线与团队feat/backend同为399df3d。团队创建PR仍被集成403拒绝，个人fork可评审，不自动合并。收尾只提交证据文档；准确命令/兼容性/剩余技术债见quality-hardening.md。

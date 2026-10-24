@@ -347,6 +347,10 @@ public class OrderService {
   @hy.CommunityBuy.infrastructure.BusinessAudit(value = "REVIEW", resourceArgument = 1)
   public hy.CommunityBuy.finance.FinanceDtos.Review review(
       Actor a, long id, hy.CommunityBuy.finance.FinanceDtos.ReviewRequest r) {
+    // reviews.user_id also locks users implicitly during FK validation. Match create/checkout's
+    // user -> item(s, ascending) -> order sequence before taking any inventory/order lock.
+    var reviewer = users.lock(a.id()).orElseThrow(BusinessException::missing);
+    if (reviewer.getRole() < 0) throw BusinessException.forbidden();
     var o = lock(id).order();
     if (!a.id().equals(o.getUserId())) throw BusinessException.forbidden();
     requireState(o, 3);

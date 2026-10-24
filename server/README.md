@@ -2,6 +2,8 @@
 
 Java 21、Gradle Wrapper 8.14.3、Spring Boot 3.5.16、MySQL 8.4.6。没有 H2 替代测试。
 
+2026-10-24质量加固以团队`feat/backend`为基线，锁顺序、测试分层、安全诊断与吊销清理的本轮状态见[quality-hardening.md](../documents/server/quality-hardening.md)；旧验收记录不代替本轮结果。
+
 ## 本地运行（隔离数据库）
 
 在 `server/` 执行，需要 JDK 21、Docker Compose。复制 `.env.example` 为 `.env`，为数据库用户、root、JWT 分别生成随机秘密。没有默认管理员，也不会连接或自动创建共享数据库。
@@ -104,6 +106,7 @@ python3 scripts/demo.py
 - `JWT_SECRET`：至少 32 个随机字节的 Base64；JWT HS256，校验签名/iss/aud/sub/iat/nbf/exp/jti/ver。默认 3600 秒，`JWT_TTL_SECONDS` 允许 60..86400。
 - `PAYMENT_TIMEOUT_SECONDS`：1..604800，默认 900；`ORDER_SWEEP_DELAY_MS` 默认 60000。订单保存创建时的截止时间，改配置只影响新订单。每次处理至多 100 笔，积压下一轮继续，启动时也补偿。失败订单记录安全日志，需检查并处理。
 - `LEGACY_PASSWORD_LOGIN` 默认 false；旧密码迁移只在维护者明确启用时允许，详见数据库文档。
+- `REVOCATION_CLEANUP_ENABLED`默认true，启动和定时各清理一批JWT已过期的吊销记录；`REVOCATION_CLEANUP_DELAY_MS`为1000..86400000、默认60000，`REVOCATION_CLEANUP_BATCH_SIZE`为1..10000、默认500。复用V2的expire_at索引，一轮一个独立事务，无循环排空；失败留待下一轮。未过期吊销不删除，过期JWT即便记录清除仍被过期校验拒绝。测试上下文显式关闭调度，手动执行用可控Clock。
 - 实现为单体数据库事务；支持多个任务重复执行，不需要 Redis、消息队列或分布式锁。未接微信、短信、真实支付/退款、物流、上传；没有实现物理删除账号/商品/订单。
 - 已实现登录/写入限流、受保护Actuator/Prometheus、精确CORS和审计，见[运行安全](../documents/server/operations.md)。HTTPS和反向代理部署见阶段6说明；优先同源 `/api`。
 

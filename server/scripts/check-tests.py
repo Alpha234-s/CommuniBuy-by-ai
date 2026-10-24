@@ -7,10 +7,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--task', choices=('test', 'integrationTest'), help='Inspect one layer only; default checks full acceptance')
 args = parser.parse_args()
 required = {
-    'test': {'BusinessRulesTest', 'TestDatabasePolicyTest', 'SafeDiagnosticsTest'},
-    'integrationTest': {'AuthPolicyTest', 'BackendIntegrationTest', 'CommerceIntegrationTest', 'FinanceIntegrationTest', 'MigrationTest', 'ReliabilityIntegrationTest', 'ReviewLockIntegrationTest'},
+    'test': {'BusinessRulesTest', 'TestDatabasePolicyTest', 'SafeDiagnosticsTest', 'RevocationCleanupTest'},
+    'integrationTest': {'AuthPolicyTest', 'BackendIntegrationTest', 'CommerceIntegrationTest', 'FinanceIntegrationTest', 'MigrationTest', 'ReliabilityIntegrationTest', 'ReviewLockIntegrationTest', 'RevocationCleanupIntegrationTest'},
 }
-minimum = {'test': 10, 'integrationTest': 80}
+minimum = {'test': 16, 'integrationTest': 84}
 totals = {k: 0 for k in ('tests', 'failures', 'errors', 'skipped')}
 seen = set()
 base = Path(__file__).resolve().parents[1] / 'app/build/test-results'

@@ -7,7 +7,7 @@
 | 评价/直接下单/结算锁顺序 | OrderService、ShopService；ReviewLockIntegrationTest | 已完成：修复前2失败均1213/40001；修复后80项全量通过 |
 | 测试分层及CI | Gradle、check-tests.py、backend.yml | 本地通过：单测6+MySQL80；Windows无库编译/单测可用；新增Windows CI，远程待运行 |
 | 安全异常诊断 | ApiErrors、SafeDiagnostics、定时任务 | 已完成：10单测+80MySQL全部通过；4日志测试覆盖trace/定位/脱敏/任务恢复 |
-| 过期吊销清理 | BlacklistRepository、定时任务 | 索引分批、有界、Clock边界、未过期吊销和JWT过期均有效；待实施 |
+| 过期吊销清理 | BlacklistRepository、RevocationCleanup、配置 | 已完成：16单测+84MySQL=100全通过；索引/Clock/回滚/并发/401均验证 |
 
 环境：JDK21、Wrapper8.14.3、Boot3.5.16、原生隔离MySQL8.4.6。Windows本机无Docker，使用此前任务专用33317端口及精确命名可丢弃测试schema；不触碰其他本机MySQL。远端Git在受限shell因schannel凭据失败，授权shell正常fetch；连接器与fetch均核对到同一SHA。
 
@@ -31,8 +31,6 @@
 
 自审：取消test的报告finalizer，防止快速单测被报告依赖带入MySQL；完整check显式包含报告及集成，防止移出默认任务漏测。环境缺失与连接失败不输出URL/凭据；原reset精确schema保护保留并补双URL和非空凭据校验。CI新增Windows+JDK21只编译，Linux保留完整MySQL/JAR/容器/代理；本轮远程尚未运行，不能拿旧78项CI替代。依赖/SQL/API未变化；开发者原`:app:test`命令现仅单测，前端无需调整。
 
-## 后续技术债（只评估）
-
 ## 阶段3验收与自审
 
 阶段2提交`370a2fe`。原ApiErrors确实仅输出类名；订单超时逐单也相同，扫描异常还会交由调度框架原样记录。本轮SafeDiagnostics只渲染类型、受限堆栈位置、合法SQLState/整数vendor及有界原因链；不把Throwable交给logger，不取message/toString/suppressed。HTTP500/409、超时扫描/逐单及审计存储降级复用。关闭Hibernate原始SQL异常/bind日志以防旁路泄漏。客户端契约不变。
@@ -40,6 +38,16 @@
 日志捕获4项均通过：HTTP请求同trace关联响应/访问/异常，包含类#方法:行号和SQLException类型；密码/完整三段令牌/地址/正文/查询/模拟SQL参数及原始SQL不泄漏；深链/循环和非法SQLState有界处理；定时任务失败不阻断其他订单，扫描故障下一轮恢复且MDC正确恢复。测试为独立MockMvc过滤器/Advice加真实Logback捕获，无数据库依赖；不把它描述为真实SQL故障测试。
 
 `gradlew.bat :app:formatJava build --no-build-cache`成功，10单测+80真实MySQL=90，0失败/错误/跳过；包括更改后完整令牌/SQL消息用例和所有受影响事务测试。合并JaCoCo见[quality-phase3.json](evidence/quality-phase3.json)。自审确认没有原异常消息/请求记录、没有改变安全响应或吞掉API异常；后台仅延期处理并留定位日志，不更改订单状态机。异常框架类型与源码行足够进行隔离复现，不声称可从日志恢复被刻意排除的原始敏感参数。外部人工评审及本轮远程CI仍待完成。
+
+## 阶段4验收与自审
+
+阶段3提交`eca31d7`。V2索引已存在，无新迁移；新增到期清理一批的定时任务，启动执行一批，其后默认60秒/500条，间隔范围1000..86400000毫秒、批量1..10000，Bean Validation启动校验。SQL按expire_at/PK稳定顺序LIMIT，repository代理提供独立READ_COMMITTED事务。每轮只执行一个批次，重复/失败下一轮继续；定时异常使用安全trace。Compose/.env及README同步配置，测试两套Spring上下文显式关调度，不干扰可控Clock。
+
+新增6单测（4项非法配置、默认/边界/关闭调度、故障恢复）和4真实MySQL集成（EXPLAIN使用ix_blacklist_expiry、有界分批/秒和纳秒边界、未过期吊销/已清除过期JWT均401、真实约束失败整批回滚和重试、两清理并发）。后两项分别是回滚与并发测试，四项总计不重复计数。首次新增并发测试泛型推导编译失败，显式Integer修正；首次4项中1项因触发器需SUPER/二进制日志权限1419未进入回滚断言，改用测试表FK注入真实InnoDB错误，保留并加强为DataIntegrityViolation断言，不要求root、不修改服务器全局参数。随后四项全部通过。
+
+最终`gradlew.bat clean build --no-build-cache`实际成功，16单测+84MySQL=100测试，0失败/错误/跳过；原78一项未删。check-tests.py复核两层/关键suite/重复计数通过；JaCoCo合并两层，见[quality-phase4.json](evidence/quality-phase4.json)。数据库迁移3项仍验证V1→V6和两类旧库；没有改动已部署迁移、账务锁、支付渠道或前端。自审清理重复import、配置Compose透传与文档尾空行；失败测试不记成功。远程Windows/Linux当前待运行。
+
+## 后续技术债（只评估）
 
 支付/退款渠道调用仍在持锁事务中。接真实渠道前必须设计持久化操作意图、结果未知查询与对账，以及外部成功而本地回滚的补偿；模拟事务不能证明远端原子性。本轮不改变交易语义。
 

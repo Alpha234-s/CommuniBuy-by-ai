@@ -1,4 +1,6 @@
-> 最终代码验收：本地1f6b5b3 / 远端6748ace76082eeb4fe04ecfc474df312b56da3ef；[Actions成功](https://github.com/Alpha234-s/CommuniBuy-by-ai/actions/runs/39261266487)，78项0失败/错误/跳过，JAR与容器代理全闭环通过。后续为证据文档提交，运行代码不变。真实支付平台与公网TLS未验收。
+> 2026-10-24新增质量加固轮次以团队feat/backend399df3d为基线，当前状态、分层命令、测试和CI结果见[本轮验收](quality-hardening.md)。下文78项及旧Actions为上一轮企业商城交付证据，不代表本轮代码已验证。
+>
+> 上一轮最终代码验收：本地1f6b5b3 / 远端6748ace76082eeb4fe04ecfc474df312b56da3ef；[Actions成功](https://github.com/Alpha234-s/CommuniBuy-by-ai/actions/runs/39261266487)，78项0失败/错误/跳过，JAR与容器代理全闭环通过。真实支付平台与公网TLS未验收。
 
 # 企业商城验收矩阵（按实际证据更新）
 

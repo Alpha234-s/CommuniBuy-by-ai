@@ -26,3 +26,9 @@ CI运行Java编译unchecked警告视为错误、固定版本google-java-format�
 Hibernate原始SqlExceptionHelper、SQL及bind类别在默认配置关闭，避免其绕过安全渲染输出数据库中的私密值。部署者不要提高这些类别至DEBUG/TRACE或开启show-sql。这里是当前受控日志策略，不声称任意第三方自定义日志也会自动脱敏。客户端仍只收到原有安全错误码、消息和trace，无堆栈/API兼容变化。
 
 订单超时扫描与逐单失败均使用同一安全诊断；每轮无HTTP上下文时生成trace，结束后清理或恢复原MDC。扫描失败留待下一轮；单个订单失败不阻断其余订单。审计存储失败也记录安全位置/原因类型，不覆盖原业务异常。SafeDiagnosticsTest捕获真实HTTP过滤器/异常处理日志及定时任务日志，覆盖消息、SQL原因链、密码、完整令牌、地址、正文/查询不泄漏与循环/深链边界。
+
+## 吊销记录保留与清理
+
+`blacklist.token_hash`保存随机jti，expire_at为UTC秒。清理边界是`expire_at <= Clock.now`，与JWT校验`exp > now`一致。启动补偿一批，此后固定delay（默认60秒），一次按expiry/PK稳定顺序删除最多500行。复用`ix_blacklist_expiry`，每批REQUIRES_NEW、READ_COMMITTED事务；多实例可重复处理，无进程内无限循环。积压继续下轮，删除失败整批回滚并留安全trace日志，下轮重试。配置范围见README，配置无效即使关闭调度也启动失败。
+
+`event=auth.revocations.cleanup`只记录删除数量和trace；`auth.revocations.deferred`记录安全原因类型/位置，不记录jti或令牌。清理只去除已失去认证效力的记录，不代表清理用户会话或提前恢复权限。JWT过期检查、用户封禁和authVersion检查保持原样。无新迁移，已部署V1..V6一律不修改；不要手工清空blacklist来“修复”故障。

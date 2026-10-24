@@ -14,7 +14,8 @@ import org.springframework.test.context.*;
 @SpringBootTest(
     properties = {
       "app.jwt.secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
-      "app.orders.scheduling-enabled=false"
+      "app.orders.scheduling-enabled=false",
+      "app.auth.revocation-cleanup.enabled=false"
     })
 @org.junit.jupiter.api.Tag("mysql")
 class AuthPolicyTest {

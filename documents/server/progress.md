@@ -140,3 +140,5 @@
 阶段2本地已验收：无DB配置的Windows编译/6单测/调试JAR成功；无Docker负向探测明确失败、0跳过；配置正确后clean build完整执行6单测+80MySQL=86全通过。更新发现检查、合并JaCoCo、报告说明、协作基线和Windows编译CI。远程Windows/Linux新CI待运行，状态保留；本地验收允许进入阶段3日志。证据quality-phase2.json。
 
 阶段3已验收：SafeDiagnostics安全原因链/代码位置、HTTP与任务trace、后台扫描/逐单及审计降级定位；默认关闭原始Hibernate SQL/bind异常日志。新增4项日志捕获与边界测试，完整build实际10单测+80MySQL=90全通过、0失败/错误/跳过；证据quality-phase3.json。进入阶段4，V2已有expire_at索引但当前确无吊销清理任务。
+
+阶段4本地已验收：新增有界索引清理、校验配置、Clock及安全任务日志，复用V2无新迁移。6新单测+4新MySQL，最终clean build实际16+84=100全通过、0失败/错误/跳过，check-tests.py通过；记录首次泛型编译失败及触发器权限1419后改真实FK故障注入，不放宽回滚断言。证据quality-phase4.json。四阶段本地验收完成，接下来交付分支/Draft PR并核实新Windows/Linux CI及JAR启动，不以旧CI充数。

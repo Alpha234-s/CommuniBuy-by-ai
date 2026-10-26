@@ -111,94 +111,115 @@ onMounted(() => {
 })
 </script>
 <template>
-  <RouterLink to="/seller/items" class="back-link">← 返回我的团购</RouterLink
-  ><PageHeading
-    :title="editing ? '编辑团购' : '发起一份好团购'"
-    description="填写真实商品信息，让邻居了解你分享的好物。"
-  />
-  <div class="panel form-width">
-    <el-alert
-      v-if="route.query.categoryFailed"
-      title="商品已创建成功，但分类设置未完成。请重新选择分类后保存，无需再创建商品。"
-      type="warning"
-      :closable="false"
-      style="margin-bottom: 20px"
-    /><ErrorNotice :message="task.error.value" @retry="load" /><ErrorNotice
-      :message="write.error.value"
-    /><el-alert
-      v-if="stockConflict"
-      title="商品版本发生变化，重新读取会覆盖当前表单，请核对最新库存后再保存。"
-      type="warning"
-      :closable="false"
-      ><el-button @click="load">重新读取商品</el-button></el-alert
-    ><el-form
-      label-position="top"
-      :disabled="write.busy.value || task.busy.value || (editing && !original)"
-      @submit.prevent="submit"
-      ><el-form-item label="团购名称"
-        ><el-input
-          v-model="form.name"
-          :maxlength="128"
-          placeholder="给好物起一个清楚的名字" /></el-form-item
-      ><el-form-item label="商品说明"
-        ><el-input
-          v-model="form.description"
-          type="textarea"
-          :rows="5"
-          :maxlength="10000"
-          show-word-limit
-          placeholder="规格、内容、注意事项等，请用纯文本说明" /></el-form-item
-      ><el-form-item label="单价（元）"
-        ><el-input
-          v-model="form.price"
-          inputmode="decimal"
-          placeholder="例如 12.50，免费商品填写 0" /></el-form-item
-      ><el-form-item label="剩余可售库存"
-        ><el-input-number
-          v-model="form.stock"
-          :min="0"
-          :max="2147483647"
-          :precision="0" /></el-form-item
-      ><el-form-item label="销售状态"
-        ><el-radio-group v-model="form.status"
-          ><el-radio :value="0">上架</el-radio><el-radio :value="-1">下架</el-radio></el-radio-group
-        ></el-form-item
-      ><el-form-item
-        :label="editing ? '开始时间（留空保留原值）' : '开始时间（留空为服务端当前时间）'"
-        ><el-date-picker
-          v-model="form.start"
-          type="datetime"
-          placeholder="选择开始时间" /></el-form-item
-      ><el-form-item label="截止时间（可不限）"
-        ><el-date-picker
-          v-model="form.end"
-          type="datetime"
-          clearable
-          placeholder="不限时间" /></el-form-item
-      ><el-form-item label="商品分类"
-        ><el-select
-          v-model="form.category"
-          placeholder="可先不设置"
-          :clearable="!original?.categoryId"
-          ><el-option
-            v-for="category in categories"
-            :key="category.id"
-            :label="category.name"
-            :value="category.id" /></el-select
-        ><el-button v-if="more" text @click="categoryTask.run(loadMore)">加载更多分类</el-button
-        ><ErrorNotice :message="categoryTask.error.value" @retry="categoryTask.run(loadMore)"
-      /></el-form-item>
-      <p class="plain-note">
-        库存是当前剩余可售数量。编辑时会携带读取到的版本；发生冲突后，需要你重新核对。
-      </p>
-      <el-button
-        type="primary"
-        size="large"
-        native-type="submit"
-        :loading="write.busy.value"
-        :disabled="stockConflict"
-        >保存团购</el-button
-      ></el-form
-    >
-  </div>
+  <section class="item-editor">
+    <RouterLink to="/seller/items" class="back-link">← 返回我的团购</RouterLink
+    ><PageHeading
+      :title="editing ? '编辑团购' : '发起一份好团购'"
+      description="填写真实商品信息，让邻居了解你分享的好物。"
+    />
+    <div class="panel item-editor-panel">
+      <el-alert
+        v-if="route.query.categoryFailed"
+        title="商品已创建成功，但分类设置未完成。请重新选择分类后保存，无需再创建商品。"
+        type="warning"
+        :closable="false"
+        style="margin-bottom: 20px"
+      /><ErrorNotice :message="task.error.value" @retry="load" /><ErrorNotice
+        :message="write.error.value"
+      /><el-alert
+        v-if="stockConflict"
+        title="商品版本发生变化，重新读取会覆盖当前表单，请核对最新库存后再保存。"
+        type="warning"
+        :closable="false"
+        ><el-button @click="load">重新读取商品</el-button></el-alert
+      ><el-form
+        label-position="top"
+        :disabled="write.busy.value || task.busy.value || (editing && !original)"
+        @submit.prevent="submit"
+        ><el-form-item label="团购名称"
+          ><el-input
+            v-model="form.name"
+            :maxlength="128"
+            placeholder="给好物起一个清楚的名字" /></el-form-item
+        ><el-form-item label="商品说明"
+          ><el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="5"
+            :maxlength="10000"
+            show-word-limit
+            placeholder="规格、内容、注意事项等，请用纯文本说明" /></el-form-item
+        ><el-form-item label="单价（元）"
+          ><el-input
+            v-model="form.price"
+            inputmode="decimal"
+            placeholder="例如 12.50，免费商品填写 0" /></el-form-item
+        ><el-form-item label="剩余可售库存"
+          ><el-input-number
+            v-model="form.stock"
+            :min="0"
+            :max="2147483647"
+            :precision="0" /></el-form-item
+        ><el-form-item label="销售状态"
+          ><el-radio-group v-model="form.status"
+            ><el-radio :value="0">上架</el-radio
+            ><el-radio :value="-1">下架</el-radio></el-radio-group
+          ></el-form-item
+        ><el-form-item
+          :label="editing ? '开始时间（留空保留原值）' : '开始时间（留空为服务端当前时间）'"
+          ><el-date-picker
+            v-model="form.start"
+            type="datetime"
+            placeholder="选择开始时间" /></el-form-item
+        ><el-form-item label="截止时间（可不限）"
+          ><el-date-picker
+            v-model="form.end"
+            type="datetime"
+            clearable
+            placeholder="不限时间" /></el-form-item
+        ><el-form-item label="商品分类"
+          ><el-select
+            v-model="form.category"
+            placeholder="可先不设置"
+            :clearable="!original?.categoryId"
+            ><el-option
+              v-for="category in categories"
+              :key="category.id"
+              :label="category.name"
+              :value="category.id" /></el-select
+          ><el-button v-if="more" text @click="categoryTask.run(loadMore)">加载更多分类</el-button
+          ><ErrorNotice :message="categoryTask.error.value" @retry="categoryTask.run(loadMore)"
+        /></el-form-item>
+        <p class="plain-note">
+          库存是当前剩余可售数量。编辑时会携带读取到的版本；发生冲突后，需要你重新核对。
+        </p>
+        <el-button
+          type="primary"
+          size="large"
+          native-type="submit"
+          :loading="write.busy.value"
+          :disabled="stockConflict"
+          >保存团购</el-button
+        ></el-form
+      >
+    </div>
+  </section>
 </template>
+
+<style scoped>
+.item-editor {
+  width: 100%;
+  max-width: 1000px;
+  min-width: 0;
+  margin-inline: auto;
+}
+.item-editor-panel {
+  width: 100%;
+  padding: 32px;
+}
+@media (max-width: 600px) {
+  .item-editor-panel {
+    padding: 20px 16px;
+  }
+}
+</style>

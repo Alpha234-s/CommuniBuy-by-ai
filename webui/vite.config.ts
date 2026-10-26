@@ -13,7 +13,21 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       proxy: env.API_PROXY_TARGET
-        ? { '/api': { target: env.API_PROXY_TARGET, changeOrigin: true } }
+        ? {
+            '/api': {
+              target: env.API_PROXY_TARGET,
+              changeOrigin: true,
+              configure(proxy) {
+                proxy.on('proxyReq', (proxyReq, request) => {
+                  // Browser -> Vite is same-origin. Do not forward that local
+                  // Origin as if the browser were contacting the backend directly.
+                  // Preserve cross-origin requests so the backend can still reject them.
+                  if (request.headers.origin === `http://${request.headers.host}`)
+                    proxyReq.removeHeader('origin')
+                })
+              },
+            },
+          }
         : undefined,
     },
 

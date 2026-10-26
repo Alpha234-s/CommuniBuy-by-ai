@@ -108,9 +108,14 @@ onMounted(() => {
     <div class="discover-heading">
       <div>
         <p class="eyebrow">DISCOVER GOOD THINGS</p>
-        <h2>
-          发现好团购 <span v-if="!busy && !error">{{ total }} 个团购</span>
-        </h2>
+        <div class="discover-title-row">
+          <h2>
+            发现好团购 <span v-if="!busy && !error">{{ total }} 个团购</span>
+          </h2>
+          <RouterLink to="/seller/items/new" class="discover-publish">
+            <el-button type="primary" size="large" :icon="Plus">发起团购</el-button>
+          </RouterLink>
+        </div>
       </div>
       <form
         class="home-search"
@@ -164,8 +169,6 @@ onMounted(() => {
       ><RouterLink v-if="query" to="/"><el-button type="primary">清空搜索</el-button></RouterLink
       ><el-button v-else-if="category" type="primary" @click="selectCategory('')"
         >查看全部好物</el-button
-      ><RouterLink v-else to="/seller/items/new"
-        ><el-button type="primary">发起团购</el-button></RouterLink
       ></el-empty
     >
     <div v-if="!error && total !== '0'" class="pagination">
@@ -386,6 +389,16 @@ onMounted(() => {
 .discover-heading h2 {
   margin: 0;
   font-size: 24px;
+}
+.discover-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+}
+.discover-publish {
+  display: inline-flex;
+  flex-shrink: 0;
 }
 .discover-heading h2 span {
   font-size: 11px;

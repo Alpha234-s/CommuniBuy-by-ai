@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-single/
+.npm-cache/
+package-lock.json
+test-results/
+playwright-report/
+.env.example

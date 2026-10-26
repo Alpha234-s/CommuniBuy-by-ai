@@ -5,29 +5,36 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "preview:design": "node scripts/capture-design.mjs",
+    "format": "prettier --write src tests *.ts *.json *.md *.html .env.example",
+    "format:check": "prettier --check src tests *.ts *.json *.md *.html .env.example",
     "build": "npm run typecheck && vite build",
     "build-single": "npm run typecheck && vite build --config vite.config.single.ts",
-    "build-all": "npm run typecheck && vite build  && vite build --config vite.config.single.ts",
+    "build-all": "npm run typecheck && vite build && vite build --config vite.config.single.ts",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
+    "axios": "^1.20.0",
+    "echarts": "^6.1.0",
     "element-plus": "^2.14.7",
-    "lucide-react": "^0.468.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "vue": "^3.5.43"
+    "lossless-json": "^4.3.3",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.43",
+    "vue-router": "^5.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@types/node": "^22.18.0",
-    "@types/react": "^19.1.12",
-    "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.2",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "prettier": "^3.9.10",
     "typescript": "~5.9.2",
     "vite": "^8.3.0",
     "vite-plugin-singlefile": "^2.3.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "vue-tsc": "^3.1.0"
   }
 }

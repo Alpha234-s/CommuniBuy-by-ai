@@ -1,205 +1,542 @@
-<template>
-  <div class="market-page">
-    <header class="topbar">
-      <div class="topbar-inner">
-        <a class="brand" href="#" aria-label="校园集市首页">
-          <span class="brand-mark">闲</span>
-          <span class="brand-text">校园集市</span>
-        </a>
-
-        <el-input
-          v-model="searchKeyword"
-          class="search-box"
-          placeholder="搜索你感兴趣的商品"
-          clearable
-          @keyup.enter="handleSearch"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-          <template #append>
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
-          </template>
-        </el-input>
-
-        <el-button class="login-button" plain @click="handleLogin">
-          <el-icon><User /></el-icon>
-          登录
-        </el-button>
-      </div>
-    </header>
-
-    <main class="main-content">
-      <section class="hero-banner">
-        <div>
-          <p class="eyebrow">校园闲置 · 轻松流转</p>
-          <h1>让每件好物找到新主人</h1>
-          <p class="hero-description">本校同学都在用的二手交易平台，安心、方便、离你更近。</p>
-        </div>
-        <div class="hero-decoration" aria-hidden="true">♧</div>
-      </section>
-
-      <section class="category-section" aria-label="商品分类">
-        <div class="section-heading">
-          <h2>发现好物</h2>
-          <span>{{ filteredProducts.length }} 件商品</span>
-        </div>
-        <div class="category-list">
-          <button
-            v-for="category in categories"
-            :key="category"
-            class="category-tag"
-            :class="{ active: activeCategory === category }"
-            @click="activeCategory = category"
-          >
-            {{ category }}
-          </button>
-        </div>
-      </section>
-
-      <section class="product-section" aria-label="商品列表">
-        <div v-if="filteredProducts.length" class="product-grid">
-          <el-card v-for="product in pagedProducts" :key="product.id" class="product-card" shadow="hover">
-            <div class="product-image-wrap">
-              <img class="product-image" :src="product.image" :alt="product.title" />
-              <span v-if="product.isNew" class="new-badge">近全新</span>
-            </div>
-            <div class="product-info">
-              <h3 class="product-title" :title="product.title">{{ product.title }}</h3>
-              <div class="product-meta">
-                <span class="product-price">¥{{ product.price }}</span>
-                <span class="product-seller">
-                  <el-icon><UserFilled /></el-icon>
-                  {{ product.seller }}
-                </span>
-              </div>
-              <div class="product-location">
-                <el-icon><Location /></el-icon>
-                {{ product.location }} · {{ product.time }}
-              </div>
-            </div>
-          </el-card>
-        </div>
-        <el-empty v-else description="没有找到相关商品，换个关键词试试吧" />
-      </section>
-
-      <div class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="currentPage"
-          background
-          layout="prev, pager, next"
-          :page-size="pageSize"
-          :total="filteredProducts.length"
-          @current-change="handlePageChange"
-        />
-      </div>
-    </main>
-
-    <footer class="footer">校园集市 · 让闲置物品流动起来</footer>
-  </div>
-</template>
-
-<script setup>
-import { computed, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Location, Search, User, UserFilled } from '@element-plus/icons-vue'
-
-const searchKeyword = ref('')
-const activeCategory = ref('全部')
-const currentPage = ref(1)
-const pageSize = 8
-
-const categories = ['全部', '数码', '图书', '生活用品', '服饰鞋包', '运动户外']
-
-const products = [
-  { id: 1, title: 'iPad Air 5 平板电脑 64G', price: '2,899', seller: '橘子汽水', location: '东区宿舍', time: '刚刚', category: '数码', isNew: true, image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?auto=format&fit=crop&w=700&q=85' },
-  { id: 2, title: '高等数学同济第七版教材', price: '18', seller: '小周同学', location: '图书馆', time: '10分钟前', category: '图书', isNew: false, image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=700&q=85' },
-  { id: 3, title: '宿舍小风扇 静音 USB充电', price: '35', seller: '风一样的我', location: '南区宿舍', time: '20分钟前', category: '生活用品', isNew: true, image: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?auto=format&fit=crop&w=700&q=85' },
-  { id: 4, title: '索尼 WH-1000XM4 降噪耳机', price: '899', seller: '林间小鹿', location: '校门口', time: '35分钟前', category: '数码', isNew: false, image: 'https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?auto=format&fit=crop&w=700&q=85' },
-  { id: 5, title: '考研英语真题资料合集', price: '25', seller: '上岸学姐', location: '西区宿舍', time: '1小时前', category: '图书', isNew: false, image: 'https://images.unsplash.com/photo-1456324504439-367cee3b3c32?auto=format&fit=crop&w=700&q=85' },
-  { id: 6, title: '宜家桌面收纳盒 两件套', price: '22', seller: '小满', location: '东区宿舍', time: '2小时前', category: '生活用品', isNew: true, image: 'https://images.unsplash.com/photo-1616627561839-074385245ff6?auto=format&fit=crop&w=700&q=85' },
-  { id: 7, title: 'Nike 运动鞋 轻便透气 42码', price: '169', seller: '奔跑吧同学', location: '体育馆', time: '3小时前', category: '运动户外', isNew: false, image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=85' },
-  { id: 8, title: '春秋款宽松卫衣 米白色', price: '49', seller: '今天也要早睡', location: '北区宿舍', time: '昨天', category: '服饰鞋包', isNew: false, image: 'https://images.unsplash.com/photo-1551488831-00ddcb6c6bd3?auto=format&fit=crop&w=700&q=85' },
-  { id: 9, title: '机械键盘 青轴 有线背光', price: '128', seller: '代码搬运工', location: '实验楼', time: '昨天', category: '数码', isNew: false, image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=700&q=85' },
-  { id: 10, title: '世界名著经典读本 6册', price: '46', seller: '书香校园', location: '图书馆', time: '昨天', category: '图书', isNew: true, image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=700&q=85' }
-]
-
-const filteredProducts = computed(() => {
-  const keyword = searchKeyword.value.trim().toLowerCase()
-  return products.filter((product) => {
-    const matchCategory = activeCategory.value === '全部' || product.category === activeCategory.value
-    const matchKeyword = !keyword || `${product.title}${product.seller}`.toLowerCase().includes(keyword)
-    return matchCategory && matchKeyword
-  })
-})
-
-const pagedProducts = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  return filteredProducts.value.slice(start, start + pageSize)
-})
-
-watch([activeCategory, searchKeyword], () => {
-  currentPage.value = 1
-})
-
-function handleSearch() {
-  currentPage.value = 1
-  ElMessage.success(searchKeyword.value.trim() ? `正在为你查找“${searchKeyword.value.trim()}”` : '已展示全部商品')
+<script setup lang="ts">
+import { computed, ref, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Search, ArrowRight, ShoppingBag, Box, CircleCheck, Plus } from '@element-plus/icons-vue'
+import { api } from '../api'
+import { errorText, useTask } from '../composables/useTask'
+import { useCategories } from '../composables/useCategories'
+import type { Item } from '../types/api'
+import { pageCount } from '../utils/format'
+import ItemCard from '../components/ItemCard.vue'
+import ErrorNotice from '../components/ErrorNotice.vue'
+const route = useRoute()
+const router = useRouter()
+const query = computed(() => (typeof route.query.q === 'string' ? route.query.q.trim() : ''))
+const keyword = ref(query.value)
+const category = ref('')
+const page = ref(1)
+const items = ref<Item[]>([])
+const total = ref('0')
+const busy = ref(false)
+const error = ref('')
+const { categories, more, loadMore } = useCategories()
+const categoryTask = useTask()
+let sequence = 0
+async function load() {
+  const current = ++sequence
+  busy.value = true
+  error.value = ''
+  try {
+    const result = await api.items({
+      page: page.value - 1,
+      size: 8,
+      status: 0,
+      keyword: query.value || undefined,
+      category: category.value || undefined,
+    })
+    if (current === sequence) {
+      items.value = result.content
+      total.value = result.count
+    }
+  } catch (e) {
+    if (current === sequence) error.value = errorText(e)
+  } finally {
+    if (current === sequence) busy.value = false
+  }
 }
-
-function handleLogin() {
-  ElMessage.info('登录功能即将开放，欢迎关注校园集市')
+function search() {
+  const next = keyword.value.trim()
+  if (next !== query.value) {
+    void router.push({ path: '/', query: next ? { q: next } : {} })
+  } else if (page.value !== 1) page.value = 1
+  else void load()
 }
-
-function handlePageChange(page) {
-  currentPage.value = page
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+function selectCategory(id: string) {
+  category.value = id
+  page.value = 1
 }
+watch(query, () => {
+  keyword.value = query.value
+  page.value = 1
+})
+watch([page, category, query], () => {
+  void load()
+})
+onMounted(() => {
+  void load()
+  void categoryTask.run(loadMore)
+})
 </script>
 
+<template>
+  <section class="home-hero">
+    <div class="hero-copy">
+      <p class="eyebrow">A LITTLE CLOSER, A LITTLE BETTER.</p>
+      <span class="badge"><span class="dot"></span> 好物相聚 · 社区共享</span>
+      <h1>一起买好物，<br />把生活过得<span>更有滋味。</span></h1>
+      <p>邻居发起的好团购，值得一起分享。<br />在熟悉的社区里，遇见一点新鲜。</p>
+      <a href="#discover" class="hero-link"
+        >发现身边好团购 <el-icon><ArrowRight /></el-icon
+      ></a>
+    </div>
+    <div class="hero-scene" aria-hidden="true">
+      <span class="scene-ring"></span>
+      <div class="scene-leaf"></div>
+      <div class="scene-box">
+        <el-icon><Box /></el-icon><span>GOOD THINGS</span>
+      </div>
+      <div class="scene-bag">
+        <el-icon><ShoppingBag /></el-icon><strong>together<br />is better.</strong
+        ><span>COMMUNIBUY</span>
+      </div>
+      <div class="scene-sticker">让好生活<br />更近一点 ↗</div>
+      <span class="scene-caption">SHARED BY YOUR COMMUNITY</span>
+    </div>
+  </section>
+  <div class="value-strip">
+    <span
+      ><el-icon><CircleCheck /></el-icon> 邻居发起，随时发现</span
+    ><span
+      ><el-icon><CircleCheck /></el-icon> 团购进度，清晰可见</span
+    ><span
+      ><el-icon><CircleCheck /></el-icon> 一份好物，一起分享</span
+    ><RouterLink to="/seller/items/new"
+      >我也想发起 <el-icon><Plus /></el-icon
+    ></RouterLink>
+  </div>
+  <section id="discover" class="discover">
+    <div class="discover-heading">
+      <div>
+        <p class="eyebrow">DISCOVER GOOD THINGS</p>
+        <h2>
+          发现好团购 <span v-if="!busy && !error">{{ total }} 个团购</span>
+        </h2>
+      </div>
+      <form
+        class="home-search"
+        role="search"
+        aria-label="搜索社区团购平台"
+        @submit.prevent="search"
+      >
+        <el-input
+          v-model="keyword"
+          placeholder="搜索团购名称或说明"
+          aria-label="搜索团购"
+          clearable
+          size="large"
+          @clear="search"
+          ><template #prefix
+            ><el-icon><Search /></el-icon></template></el-input
+        ><el-button type="primary" native-type="submit" size="large">搜索</el-button>
+      </form>
+    </div>
+    <div class="category-tabs" aria-label="团购分类">
+      <button :class="{ active: !category }" @click="selectCategory('')">全部好物</button
+      ><button
+        v-for="c in categories"
+        :key="c.id"
+        :class="{ active: category === c.id }"
+        @click="selectCategory(c.id)"
+      >
+        {{ c.name }}</button
+      ><button v-if="more" :disabled="categoryTask.busy.value" @click="categoryTask.run(loadMore)">
+        更多分类 +
+      </button>
+    </div>
+    <ErrorNotice :message="categoryTask.error.value" @retry="categoryTask.run(loadMore)" />
+    <ErrorNotice :message="error" @retry="load" />
+    <el-skeleton v-if="busy" :rows="7" animated class="panel" />
+    <div v-else-if="!error && items.length" class="product-grid">
+      <ItemCard
+        v-for="item in items"
+        :key="item.id"
+        :item="item"
+        :category="categories.find((c) => c.id === item.categoryId)?.name"
+      />
+    </div>
+    <el-empty
+      v-else-if="!error"
+      :description="
+        query || category
+          ? '没有找到匹配的团购，试试其他条件'
+          : '还没有上架的团购，来发起第一份好物吧'
+      "
+      ><RouterLink v-if="query" to="/"><el-button type="primary">清空搜索</el-button></RouterLink
+      ><el-button v-else-if="category" type="primary" @click="selectCategory('')"
+        >查看全部好物</el-button
+      ><RouterLink v-else to="/seller/items/new"
+        ><el-button type="primary">发起团购</el-button></RouterLink
+      ></el-empty
+    >
+    <div v-if="!error && total !== '0'" class="pagination">
+      <el-pagination
+        v-model:current-page="page"
+        :page-size="8"
+        :total="pageCount(total)"
+        background
+        layout="prev, pager, next"
+      />
+    </div>
+  </section>
+  <section class="host-banner">
+    <div>
+      <span class="eyebrow">SHARE SOMETHING GOOD</span>
+      <h2>你发现的好物，也值得让邻居知道。</h2>
+      <p>从发起一份团购开始，把好生活分享给身边的邻居。</p>
+    </div>
+    <RouterLink to="/seller/items/new"
+      ><el-button plain size="large"
+        >发起我的团购 <el-icon><ArrowRight /></el-icon></el-button
+    ></RouterLink>
+  </section>
+  <p class="home-footnote">商品图形为统一占位示意，具体商品以发起人文字说明为准。</p>
+</template>
+
 <style scoped>
-:global(*) { box-sizing: border-box; }
-:global(body) { margin: 0; background: #f6f8fb; color: #1f2937; font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif; }
-.market-page { min-height: 100vh; }
-.topbar { position: sticky; top: 0; z-index: 10; background: rgba(255, 255, 255, .94); border-bottom: 1px solid #e9edf3; backdrop-filter: blur(14px); }
-.topbar-inner { display: flex; align-items: center; gap: 28px; max-width: 1180px; height: 72px; margin: 0 auto; padding: 0 24px; }
-.brand { display: flex; align-items: center; gap: 9px; color: #172033; text-decoration: none; white-space: nowrap; }
-.brand-mark { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 11px; color: #fff; background: linear-gradient(135deg, #5b6cff, #8290ff); font-size: 20px; font-weight: 700; }
-.brand-text { font-size: 20px; font-weight: 700; letter-spacing: 1px; }
-.search-box { max-width: 580px; margin: 0 auto; }
-.search-box :deep(.el-input__wrapper) { border-radius: 12px 0 0 12px; box-shadow: 0 0 0 1px #e4e8f0 inset; }
-.search-box :deep(.el-input-group__append) { border-radius: 0 12px 12px 0; overflow: hidden; padding: 0; }
-.search-box :deep(.el-input-group__append .el-button) { height: 40px; padding: 0 23px; margin: 0; border: 0; }
-.login-button { border-color: #dce2ee; border-radius: 10px; color: #475569; }
-.main-content { max-width: 1180px; margin: 0 auto; padding: 30px 24px 70px; }
-.hero-banner { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: 190px; margin-bottom: 32px; padding: 34px 48px; overflow: hidden; border-radius: 20px; background: linear-gradient(110deg, #eef1ff 0%, #e9f7ff 100%); }
-.hero-banner::after { position: absolute; right: -80px; bottom: -130px; width: 360px; height: 260px; border-radius: 50%; background: rgba(129, 144, 255, .17); content: ""; }
-.eyebrow { margin: 0 0 12px; color: #6876e9; font-size: 14px; font-weight: 700; letter-spacing: 2px; }
-.hero-banner h1 { margin: 0 0 10px; color: #18233d; font-size: 32px; letter-spacing: 1px; }
-.hero-description { margin: 0; color: #68758b; font-size: 15px; }
-.hero-decoration { position: relative; z-index: 1; margin-right: 45px; color: #8793f4; font-size: 118px; line-height: 1; transform: rotate(-25deg); opacity: .66; }
-.section-heading { display: flex; align-items: baseline; gap: 12px; margin-bottom: 17px; }
-.section-heading h2 { margin: 0; color: #202b3e; font-size: 22px; }
-.section-heading span { color: #98a2b3; font-size: 13px; }
-.category-list { display: flex; gap: 12px; margin-bottom: 25px; overflow-x: auto; }
-.category-tag { padding: 9px 20px; border: 1px solid #e2e7ef; border-radius: 10px; color: #64748b; background: #fff; cursor: pointer; font-size: 14px; transition: .2s; }
-.category-tag:hover, .category-tag.active { border-color: #6877ee; color: #fff; background: #6877ee; box-shadow: 0 5px 15px rgba(104, 119, 238, .2); }
-.product-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
-.product-card { border: 1px solid #edf0f5; border-radius: 14px; overflow: hidden; }
-.product-card :deep(.el-card__body) { padding: 0; }
-.product-image-wrap { position: relative; height: 185px; overflow: hidden; background: #f1f4f8; }
-.product-image { width: 100%; height: 100%; object-fit: cover; transition: transform .35s; }
-.product-card:hover .product-image { transform: scale(1.05); }
-.new-badge { position: absolute; top: 12px; left: 12px; padding: 4px 8px; border-radius: 6px; color: #fff; background: #5c75e9; font-size: 11px; }
-.product-info { padding: 15px 16px 16px; }
-.product-title { overflow: hidden; margin: 0 0 14px; color: #27344a; font-size: 15px; font-weight: 600; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
-.product-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.product-price { color: #f05c55; font-size: 20px; font-weight: 700; }
-.product-seller, .product-location { display: flex; align-items: center; gap: 4px; color: #95a0b2; font-size: 12px; }
-.product-location { margin-top: 12px; }
-.pagination-wrap { display: flex; justify-content: center; margin-top: 34px; }
-.footer { padding: 24px; color: #9aa4b4; background: #fff; text-align: center; font-size: 13px; }
-@media (max-width: 900px) { .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .hero-decoration { margin-right: 0; } }
-@media (max-width: 680px) { .topbar-inner { gap: 12px; height: auto; flex-wrap: wrap; padding-top: 13px; padding-bottom: 13px; } .brand { flex: 1; } .search-box { order: 3; width: 100%; max-width: none; } .main-content { padding: 20px 16px 50px; } .hero-banner { min-height: 175px; padding: 26px; } .hero-banner h1 { font-size: 25px; } .hero-decoration { display: none; } .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .product-image-wrap { height: 145px; } .product-info { padding: 13px; } .product-price { font-size: 18px; } }
-@media (max-width: 390px) { .product-grid { grid-template-columns: 1fr; } }
+.home-hero {
+  min-height: 355px;
+  background: #edf0e1;
+  border-radius: 20px;
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  padding: 38px 45px;
+}
+.hero-copy {
+  position: relative;
+  z-index: 1;
+}
+.hero-copy > .eyebrow {
+  font-size: 9px;
+  color: #96a17f;
+  margin-bottom: 18px;
+}
+.hero-copy .badge {
+  background: transparent;
+  border-color: #d3ddc4;
+  font-size: 10px;
+  padding: 4px 9px;
+}
+.hero-copy h1 {
+  font-size: 38px;
+  line-height: 1.5;
+  margin: 15px 0 12px;
+  letter-spacing: -1.2px;
+}
+.hero-copy h1 span {
+  color: #7e9453;
+}
+.hero-copy > p:not(.eyebrow) {
+  font-size: 12px;
+  color: #889677;
+  line-height: 1.9;
+  margin-bottom: 18px;
+}
+.hero-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 28px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.hero-scene {
+  position: relative;
+  min-width: 390px;
+  width: 43%;
+  align-self: stretch;
+}
+.scene-ring {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: #e2e7cd;
+  left: 22px;
+  top: -5px;
+}
+.scene-box {
+  position: absolute;
+  width: 132px;
+  height: 130px;
+  background: #d8c3a0;
+  border-radius: 5px 5px 12px 12px;
+  left: 7px;
+  top: 128px;
+  transform: rotate(-10deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  box-shadow: 10px 15px 0 #a6b08415;
+}
+.scene-box .el-icon {
+  font-size: 53px;
+  color: #a58b60;
+}
+.scene-box span {
+  font-size: 7px;
+  letter-spacing: 2px;
+  color: #8c7853;
+}
+.scene-bag {
+  position: absolute;
+  left: 132px;
+  top: 55px;
+  background: #7d9561;
+  border-radius: 9px 9px 21px 7px;
+  width: 162px;
+  height: 207px;
+  transform: rotate(11deg);
+  padding: 25px;
+  color: #ecf0dc;
+  box-shadow: 13px 15px 0 #708c5210;
+}
+.scene-bag:before {
+  content: '';
+  position: absolute;
+  top: -39px;
+  left: 42px;
+  width: 75px;
+  height: 53px;
+  border: 7px solid #768b5e;
+  border-bottom: 0;
+  border-radius: 40px 40px 0 0;
+}
+.scene-bag > .el-icon {
+  font-size: 31px;
+}
+.scene-bag strong {
+  font-family: Georgia, serif;
+  font-size: 28px;
+  line-height: 1.05;
+  display: block;
+  margin: 10px 0 20px;
+}
+.scene-bag > span {
+  font-size: 6px;
+  letter-spacing: 2px;
+}
+.scene-leaf {
+  position: absolute;
+  left: 260px;
+  top: 10px;
+  width: 62px;
+  height: 108px;
+  background: #abb887;
+  border-radius: 90% 0;
+  transform: rotate(18deg);
+}
+.scene-sticker {
+  position: absolute;
+  right: 10px;
+  bottom: 38px;
+  background: #fafbf0;
+  border: 1px solid #dde2ce;
+  padding: 13px 20px;
+  font-size: 12px;
+  line-height: 1.7;
+  transform: rotate(-8deg);
+  color: #7c8c65;
+  border-radius: 5px;
+}
+.scene-caption {
+  position: absolute;
+  right: 0;
+  top: 1px;
+  font-size: 7px;
+  color: #9da88e;
+  letter-spacing: 2px;
+  writing-mode: vertical-rl;
+}
+.value-strip {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px 5px 26px;
+  color: #8d9883;
+  font-size: 11px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 38px;
+}
+.value-strip span,
+.value-strip a {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+.value-strip a {
+  color: #59764b;
+}
+.discover {
+  scroll-margin-top: 20px;
+}
+.discover-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  gap: 25px;
+}
+.discover-heading .eyebrow {
+  font-size: 9px;
+  margin-bottom: 10px;
+}
+.discover-heading h2 {
+  margin: 0;
+  font-size: 24px;
+}
+.discover-heading h2 span {
+  font-size: 11px;
+  font-weight: 400;
+  color: #9ba28f;
+  margin-left: 15px;
+}
+.home-search {
+  display: flex;
+  gap: 10px;
+  max-width: 410px;
+  width: 43%;
+}
+.category-tabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  margin-bottom: 13px;
+}
+.category-tabs button {
+  white-space: nowrap;
+  border: 1px solid #e5e8df;
+  border-radius: 8px;
+  background: #fff;
+  padding: 9px 20px;
+  font-size: 12px;
+  color: #87927c;
+}
+.category-tabs button.active {
+  background: #28664c;
+  color: #fff;
+  border-color: #28664c;
+}
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+}
+.host-banner {
+  border: 1px solid #e1e6d8;
+  border-radius: 15px;
+  background: #f1f3e9;
+  margin-top: 45px;
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.host-banner h2 {
+  font-size: 20px;
+  margin: 10px 0;
+}
+.host-banner .eyebrow {
+  font-size: 8px;
+}
+.host-banner p {
+  color: #8c967e;
+  font-size: 12px;
+  margin: 0;
+}
+.host-banner .el-button {
+  background: transparent;
+  border-color: #c4d1b5;
+  color: #5d784c;
+}
+.host-banner .el-icon {
+  margin-left: 12px;
+}
+.home-footnote {
+  text-align: right;
+  color: #a4ac9c;
+  font-size: 9px;
+  margin-top: 17px;
+}
+@media (max-width: 1050px) {
+  .home-hero {
+    padding: 30px;
+  }
+  .hero-copy h1 {
+    font-size: 30px;
+  }
+  .hero-scene {
+    transform: scale(0.85);
+    transform-origin: right center;
+    min-width: 310px;
+  }
+  .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .value-strip {
+    gap: 10px;
+  }
+  .value-strip > span {
+    font-size: 10px;
+  }
+}
+@media (max-width: 700px) {
+  .home-hero {
+    min-height: 290px;
+  }
+  .hero-copy h1 {
+    font-size: 29px;
+  }
+  .hero-scene {
+    display: none;
+  }
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .value-strip {
+    flex-wrap: wrap;
+    padding: 20px 0;
+    gap: 13px;
+    margin-bottom: 28px;
+  }
+  .value-strip > span:last-of-type {
+    display: none;
+  }
+  .discover-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+  }
+  .home-search {
+    width: 100%;
+    max-width: none;
+  }
+  .category-tabs button {
+    padding: 8px 15px;
+  }
+  .host-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 25px;
+  }
+  .host-banner h2 {
+    font-size: 18px;
+  }
+  .home-hero .eyebrow {
+    font-size: 7px;
+  }
+  .discover-heading h2 {
+    font-size: 22px;
+  }
+}
+@media (max-width: 370px) {
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

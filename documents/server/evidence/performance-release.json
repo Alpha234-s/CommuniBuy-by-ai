@@ -1,0 +1,36 @@
+{
+  "timestamp_utc": "2026-10-19T13:31:26.777400+00:00",
+  "hardware": {
+    "os": "Windows-11-10.0.26200-SP0",
+    "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "logical_cpus": 32,
+    "memory_bytes": 34141495296
+  },
+  "workload": {
+    "seed_items_for_owner": 200,
+    "concurrency": 8,
+    "requests": 400,
+    "page_size": 20,
+    "warmup_requests": 20,
+    "query": "owner AND keyword AND status, page=0, id DESC"
+  },
+  "targets": {
+    "p95_ms_max": 250,
+    "throughput_rps_min": 30,
+    "error_rate_max": 0
+  },
+  "duration_seconds": 0.6449886999998853,
+  "results": {
+    "throughput_rps": 620.1659036818337,
+    "p50_ms": 10.680999999749474,
+    "p95_ms": 20.68920000056096,
+    "p99_ms": 44.42410000046948,
+    "mean_ms": 12.029533249979067,
+    "failures": 0,
+    "error_rate": 0.0
+  },
+  "trace_id_sample": "1ca18f8b2f8145879a95f45e80ba16d5",
+  "limits": "One local read workload; normal host background load; not production capacity certification; write concurrency is verified separately by MySQL invariant tests.",
+  "jar_sha256": "a7ad5b30454c59170a736b34a2bb056cce9bc78ef85f403e564597869af9f1a0",
+  "passed": true
+}

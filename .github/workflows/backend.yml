@@ -1,0 +1,78 @@
+name: Backend
+on:
+  push:
+    paths: ['server/**', 'documents/server/**', 'documents/database/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['server/**', 'documents/server/**', 'documents/database/**', '.github/workflows/backend.yml']
+permissions:
+  contents: read
+jobs:
+  windows-compile:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile main and test sources only (no database acceptance)
+        run: .\gradlew.bat :app:classes :app:testClasses --no-daemon
+  mysql-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew clean build --no-daemon --no-build-cache
+      - name: Require actual test discovery
+        run: python3 scripts/check-tests.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-results
+          path: |
+            server/app/build/reports/tests/
+            server/app/build/test-results/
+            server/app/build/reports/jacoco/
+            server/app/build/libs/communibuy.jar
+      - name: Start executable JAR and run HTTP demonstration
+        shell: bash
+        run: |
+          export DB_PASSWORD="$(openssl rand -hex 24)"
+          export MYSQL_ROOT_PASSWORD="$(openssl rand -hex 24)"
+          export JWT_SECRET="$(openssl rand -base64 48)"
+          export PAYMENT_SIM_SECRET="$(openssl rand -base64 48)"
+          export PAYMENT_MODE=simulator
+          export DB_USER=communibuy
+          export DB_URL='jdbc:mysql://127.0.0.1:3307/communibuy?allowPublicKeyRetrieval=true&useSSL=false'
+          docker compose up -d --wait
+          java -jar app/build/libs/communibuy.jar > app/build/demo-startup.log 2>&1 &
+          app_pid=$!
+          trap 'kill "$app_pid" || true; docker compose down' EXIT
+          python3 scripts/commerce-demo.py --wait-seconds 90
+          python3 scripts/load-test.py --output app/build/performance.json --jar app/build/libs/communibuy.jar
+          kill "$app_pid"
+          wait "$app_pid" || true
+          docker compose --profile proxy up -d --build --wait
+          python3 scripts/commerce-demo.py --base-url http://127.0.0.1:8088/api/v1 --wait-seconds 90
+          docker compose exec -T proxy nginx -t
+          docker compose exec -T app id
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-runtime-evidence
+          path: |
+            server/app/build/performance.json
+            server/app/build/demo-startup.log

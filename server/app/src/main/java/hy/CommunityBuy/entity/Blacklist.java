@@ -1,22 +1,20 @@
 package hy.CommunityBuy.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "blacklist")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Blacklist {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @Column(length = 64)
+  private String tokenHash;
 
-    @Column(nullable = false, length = 64)
-    private String tokenHash;
-
-    @Column(nullable = false)
-    private Long expireAt;
+  @Column(nullable = false)
+  private Long expireAt;
 }

@@ -1,23 +1,42 @@
 package hy.CommunityBuy.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class User {
-    @Id
-    private String id;
+  @Id
+  @Column(length = 32)
+  private String id;
 
-    @Column(nullable = false)
-    private String password;
+  @com.fasterxml.jackson.annotation.JsonIgnore
+  @Column(nullable = false, length = 255)
+  private String password;
 
-    private String nickname;
-    private String description;
-    private Integer role; // 0: 普通用户, 1: 管理员, -1: 封禁
-    private String address;
+  @Column(length = 64)
+  private String nickname;
+
+  @Column(length = 255)
+  private String description;
+
+  @Column(nullable = false)
+  private Integer role = 0;
+
+  @Column(length = 255)
+  private String address;
+
+  @Column(nullable = false)
+  private Long authVersion = 0L;
+
+  @Column(nullable = false, length = 16)
+  private String passwordScheme = "BCRYPT";
+
+  @Column(nullable = false)
+  private Long cartVersion = 0L;
 }

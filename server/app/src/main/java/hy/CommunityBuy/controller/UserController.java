@@ -1,53 +1,54 @@
 package hy.CommunityBuy.controller;
 
-import hy.CommunityBuy.entity.User;
+import hy.CommunityBuy.dto.*;
+import hy.CommunityBuy.dto.Dtos.*;
+import hy.CommunityBuy.security.Actor;
 import hy.CommunityBuy.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/user")
+@RequiredArgsConstructor
+@Validated
 public class UserController {
+  private final UserService users;
 
-    @Autowired
-    private UserService userService;
+  @GetMapping
+  public Api<PageView<String>> list(
+      @RequestParam(defaultValue = "0") @Min(0) @Max(1000000) int page,
+      @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
+    return Api.ok(users.list(Actor.current(), page, size));
+  }
 
-    @GetMapping
-    public ResponseEntity<Map<String, Object>> getAllUsers(@RequestHeader("token") String token) {
-        // 简化版：实际应校验管理员权限
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("data", userService.getAllUserIds());
-        return ResponseEntity.ok(response);
-    }
+  @PostMapping
+  public Api<UserView> create(@Valid @RequestBody CreateUser r) {
+    Actor.current().requireAdmin();
+    return Api.ok(users.create(r));
+  }
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<Map<String, Object>> getUser(@RequestHeader("token") String token, @PathVariable String userId) {
-        User user = userService.getUser(userId);
-        Map<String, Object> response = new HashMap<>();
-        if (user != null) {
-            response.put("success", true);
-            Map<String, Object> data = new HashMap<>();
-            data.put("nickname", user.getNickname());
-            data.put("description", user.getDescription());
-            data.put("address", user.getAddress());
-            response.put("data", data);
-        } else {
-            response.put("success", false);
-        }
-        return ResponseEntity.ok(response);
-    }
+  @GetMapping("/{id}")
+  public Api<UserView> get(@PathVariable @Pattern(regexp = Dtos.USER_ID) String id) {
+    return Api.ok(users.get(Actor.current(), id));
+  }
 
-    @PostMapping("/{userId}")
-    public ResponseEntity<Map<String, Object>> updateUser(@RequestHeader("token") String token, @PathVariable String userId, @RequestBody User updateInfo) {
-        User updatedUser = userService.updateUser(userId, updateInfo);
-        Map<String, Object> response = new HashMap<>();
-        response.put("success", true);
-        response.put("data", updatedUser);
-        return ResponseEntity.ok(response);
-    }
+  @PostMapping("/{id}")
+  public Api<UserView> update(
+      @PathVariable @Pattern(regexp = Dtos.USER_ID) String id, @Valid @RequestBody Profile r) {
+    return Api.ok(users.update(Actor.current(), id, r));
+  }
+
+  @PostMapping("/{id}/role")
+  public Api<UserView> role(
+      @PathVariable @Pattern(regexp = Dtos.USER_ID) String id, @Valid @RequestBody Role r) {
+    return Api.ok(users.role(Actor.current(), id, r.role()));
+  }
+
+  @PostMapping("/{id}/ban")
+  public Api<UserView> ban(@PathVariable @Pattern(regexp = Dtos.USER_ID) String id) {
+    return Api.ok(users.role(Actor.current(), id, -1));
+  }
 }

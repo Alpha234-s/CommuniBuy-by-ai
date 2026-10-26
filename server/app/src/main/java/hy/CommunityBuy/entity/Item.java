@@ -1,37 +1,49 @@
 package hy.CommunityBuy.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "items")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Item {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-    @Column(nullable = false)
-    private String name;
+  @Column(nullable = false, length = 128)
+  private String name;
 
-    @Column(columnDefinition = "TEXT")
-    private String description;
+  @Column(columnDefinition = "TEXT")
+  private String description;
 
-    @Column(nullable = false)
-    private Integer price; // 单位：分
+  @Column(nullable = false)
+  private Integer price;
 
-    @Column(nullable = false)
-    private Integer stock;
+  @Column(nullable = false)
+  private Integer stock;
 
-    @Column(nullable = false)
-    private Integer status;
+  @Column(nullable = false)
+  private Integer status;
 
-    private String ownerId;
+  @Column(nullable = false, length = 32)
+  private String ownerId;
 
-    private Long startTime;
+  @Column(nullable = false)
+  private Long startTime;
 
-    private Long endTime;
+  private Long endTime;
+
+  @Column(nullable = false)
+  private Long shipmentCount = 0L;
+
+  @Version
+  @Column(nullable = false)
+  private Long version = 0L;
+
+  private Long categoryId;
 }

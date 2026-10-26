@@ -1,0 +1,11 @@
+{
+  "command": "gradlew formatJava :app:test --tests hy.CommunityBuy.ReliabilityIntegrationTest.uniqueDatabaseConflictKeepsAuditAndHttpStatusConsistentAndRollsBackStock",
+  "implementation_before_fix": "542bb85; added audit status assertion in working tree",
+  "tests": 1,
+  "failures": 1,
+  "skipped": 0,
+  "failure": "expected: 409 but was: 500",
+  "cause": "Real MySQL 1062 unique conflict: HTTP status/code assertions 409/CONFLICT succeeded, audit assertion failed with 500",
+  "initial_investigation_correction": "The first attempted CHECK 3819/HY000 sample was wrongly assumed to map to 409; a targeted run and a full 77-test run failed that added assertion. The existing CHECK rollback test was restored unchanged; a new HTTP unique-conflict test reproduces the actual mismatch without weakening expected 409.",
+  "scope": "Existing rollback assertions retained; final full 78-test rerun recorded separately"
+}

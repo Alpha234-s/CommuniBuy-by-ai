@@ -1,0 +1,27 @@
+{
+  "run_id": 39259452045,
+  "url": "https://github.com/Alpha234-s/CommuniBuy-by-ai/actions/runs/39259452045",
+  "head_sha": "8e183fc38b01f7711accc5f75fa8d361d0c80661",
+  "conclusion": "success",
+  "actual_test_pass_lines": 77,
+  "lines": [
+    "BUILD SUCCESSFUL in 2m 5s",
+    "{'tests': 77, 'failures': 0, 'errors': 0, 'skipped': 0}",
+    "PASS prepare ordinary accounts: each may buy and sell; credentials omitted",
+    "PASS maximum escaped-Unicode description accepted; over-limit description rejected",
+    "PASS cart -> atomic split into two seller orders -> persistent idempotent retry",
+    "PASS independent simulator payment -> shipping -> receipt -> review -> internal settlement",
+    "PASS refund application -> approval -> simulated refund -> negative accounting adjustment; shipped stock unchanged",
+    "PASS permission refusals -> once-only cancellation restock -> logout revocation",
+    "{\"passed\": true, \"results\": {\"throughput_rps\": 211.298400143598, \"p50_ms\": 34.93328300001508, \"p95_ms\": 51.92816800001765, \"p99_ms\": 140.14792300000067, \"mean_ms\": 37.549238705001, \"failures\": 0, \"error_rate\": 0.0}}",
+    "PASS prepare ordinary accounts: each may buy and sell; credentials omitted",
+    "PASS maximum escaped-Unicode description accepted; over-limit description rejected",
+    "PASS cart -> atomic split into two seller orders -> persistent idempotent retry",
+    "PASS independent simulator payment -> shipping -> receipt -> review -> internal settlement",
+    "PASS refund application -> approval -> simulated refund -> negative accounting adjustment; shipped stock unchanged",
+    "PASS permission refusals -> once-only cancellation restock -> logout revocation",
+    "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok",
+    "nginx: configuration file /etc/nginx/nginx.conf test is successful",
+    "uid=10001(communibuy) gid=10001(communibuy) groups=10001(communibuy)"
+  ]
+}

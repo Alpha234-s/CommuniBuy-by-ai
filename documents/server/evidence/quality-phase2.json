@@ -1,0 +1,103 @@
+{
+  "environment": {
+    "os": "Windows",
+    "jdk": "21.0.8",
+    "gradle": "8.14.3",
+    "mysql": "8.4.6 native, isolated task database"
+  },
+  "layers": {
+    "test": [
+      {
+        "name": "hy.CommunityBuy.BusinessRulesTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.TestDatabasePolicyTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "integrationTest": [
+      {
+        "name": "hy.CommunityBuy.AuthPolicyTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.BackendIntegrationTest",
+        "tests": 39,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.CommerceIntegrationTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.FinanceIntegrationTest",
+        "tests": 18,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.MigrationTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.ReliabilityIntegrationTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.ReviewLockIntegrationTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "coverage": {
+    "INSTRUCTION": {
+      "missed": 720,
+      "covered": 6781
+    },
+    "BRANCH": {
+      "missed": 165,
+      "covered": 472
+    },
+    "LINE": {
+      "missed": 113,
+      "covered": 1209
+    },
+    "COMPLEXITY": {
+      "missed": 204,
+      "covered": 394
+    },
+    "METHOD": {
+      "missed": 49,
+      "covered": 227
+    },
+    "CLASS": {
+      "missed": 8,
+      "covered": 70
+    }
+  }
+}

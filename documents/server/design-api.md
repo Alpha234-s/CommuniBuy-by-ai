@@ -1,392 +1,140 @@
-# 社区团购平台 API 详细设计文档
+# 后端 API 契约（当前实现）
 
-本文档基于 `documents/server/design.md` 进行扩展，详细描述了 API 的请求参数、响应结构、校验规则及限制条件。
+根路径 `/api/v1`。请求、响应 JSON；金额为整数分，时间为 UTC Unix 秒。所有接口（登录和公开注册除外）必须发送 `Authorization: Bearer <JWT>`。旧 `token` 请求头和请求体中的 token 不再兼容，避免多种认证入口产生歧义。
 
-## 1. 通用说明
+响应统一 `{"success":true,"message":"","data":...}`；失败为 `success:false,data:null` 和安全的 message。HTTP 400 输入错误、401 未认证/令牌无效/账号封禁、403 无权、404 不存在、409 状态/库存/幂等/数据库冲突、405 不支持的方法、500 未预期错误。不会返回 SQL、堆栈、密码或哈希。
 
-### 1.1 格式
-所有 API 响应均遵循以下 JSON 格式：
-```json
-{
-  "success": true, // 只要服务器内部没有错误，始终为true
-  "message": "", // 服务器内部错误（例如java层出现异常），success为false时，message为具体错误信息（如报错和堆栈记录等）
-  "data": {}        // 实际数据内容，下方表格中的数据都是此键的数据。
-}
-```
-所有 API POST 请求时也使用json格式。
+ID：资源 ID 为正 Long，用户 ID 为 1..32 位 ASCII 字母/数字/下划线，首位字母或下划线，**区分大小写**。新约定允许语言关键字，不再采用无法跨语言维护的保留字黑名单。密码 8..72 字符，且不超过 72 UTF-8 字节；旧账号登录允许短旧密码，改密必须遵守新规则。未知 JSON 字段、浮点数量会 400。
 
-### 1.2 基础规则
-- **ID 类参数**：必须为正整数。
-  - **用户id除外**：用户id使用只包含大小写字母、数字、下划线的字符串（且不能以数字开头，不能使用java、js、ts、html、css等的特殊标识符、关键字）
-- **字符串参数**：非空，长度限制根据业务定义。
-- **分页参数**：`page` $\ge$ 0, `size` $\in [0, 2147483647]$（page=0表示第一页，size=0表示不分页）。
-- **令牌参数**：JWT 格式，用于用户认证、授权。
-- **时间参数**：unix 时间戳，单位为秒。
+分页统一 `page=0,size=20`，page 0..1000000、size 1..100；没有 size=0 全量模式。列表返回 `data:{content:[],count,page,size}`，数据库分页；用户按 ID 升序，商品/订单按 ID 降序稳定排序。多个筛选条件使用 AND，权限范围始终参与查询。
 
----
+## 账号
 
-## 2. 用户与权限模块 (User & Auth API)
+| 方法与路径 | 请求 | 权限/响应 data |
+| --- | --- | --- |
+| POST `/auth/register` | `{user,password}` | 公开创建普通用户，重复 ID 409；UserView |
+| POST `/auth` | `{user,password}` | 登录；`{token,tokenType:"Bearer",expiresAt}` |
+| GET `/auth` | 无 | 当前 UserView |
+| POST `/auth/logout` | 无请求体 | 吊销当前 jti；null，随后使用该令牌 401 |
+| POST `/auth/reset` | `{oldPassword,newPassword}` | 自己改密，所有旧会话立即失效，重新登录 |
+| GET `/user` | page,size | 仅管理员；分页用户 ID 列表 |
+| POST `/user` | `{user,password}` | 仅管理员创建普通用户；UserView |
+| GET `/user/{id}` | 无 | 本人或管理员可看完整资料 |
+| POST `/user/{id}` | `{nickname?,description?,address?}` | 本人或管理员；至少一项，不能含 role/password |
+| POST `/user/{id}/role` | `{role:-1或0或1}` | 仅管理员管理其他用户，禁止修改自己 |
+| POST `/user/{id}/ban` | 无 | 同上，设 -1，并吊销其全部会话 |
 
-### 2.1 用户登录
-- **接口**: `POST /api/v1/auth`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `user` | String | 是 | 用户唯一ID |
-  | `password` | String | 是 | 用户密码 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 登录是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
-  | `token` | String | 成功时为令牌，失败时空字符串 |
+UserView 仅 `{id,nickname,description,address,role}`，role=-1 封禁/0 普通/1 管理。角色变化增加会话版本；解封也不会恢复旧令牌。nickname 1..64、description 0..255、address 1..255，昵称和地址不能纯空白。地址是单字符串，未实现多个地址簿对象。空 `{}` 不删除资源，返回 400。
 
-### 2.2 用户登出（吊销令牌）
-- **接口**: `POST /api/v1/auth/logout`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 要吊销的令牌 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 登出是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
+## 商品/团购
 
-### 2.3 修改密码
-- **接口**: `POST /api/v1/auth/reset`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 用户的的令牌 |
-  | `oldPassword` | String | 是 | 旧密码 |
-  | `newPassword` | String | 是 | 新密码 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 修改是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
+| 方法与路径 | 请求 | 说明 |
+| --- | --- | --- |
+| GET `/item` | page,size,keyword?,owner?,status? | 名称/描述包含关键字，按发起人和状态共同筛选；分页 ItemView |
+| GET `/item/{id}` | 无 | 任意已认证用户 |
+| POST `/item` | `{name,description?,price,stock,status?,startTime?,endTime?}` | 发起人来自当前用户，返回 ItemView |
+| POST `/item/{id}` | 上述可选字段及 `version?` | 仅发起人/管理员，至少一项业务变更 |
 
-### 2.4 获取当前用户ID
-- **接口**: `GET /api/v1/auth`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 用户的的令牌 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 获取是否成功 |
-  | `user` | String | 用户ID |
+name 非空且不超过128，description 最多10000，price 0..2147483647，stock 同范围。免费商品合法。status **仅 -1 下架、0 上架**，不再编码发货次数。响应 `shipmentCount` 独立统计已执行的订单发货次数。
 
-### 2.5 获取所有用户ID列表
-- **接口**: `GET /api/v1/user`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `page` | Integer | 否 | 页码 (默认0) |
-  | `size` | Integer | 否 | 每页数量（默认100） |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 获取是否成功 |
-  | `data` | List(String) | 用户 ID 列表 |
-- **说明**：仅管理员可用。
+商品name/description、用户nickname/description及评价为纯文本，拒绝尖括号；前端用textContent显示。分页、整数及字符串长度不合法返回400。
 
-### 2.6 用户创建
-- **接口**: `POST /api/v1/user`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `user` | String | 是 | 用户唯一ID |
-  | `password` | String | 是 | 用户密码 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 注册是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
-- **说明**：仅管理员可以创建新用户。
+startTime 默认服务端现在且 >=0；endTime 为 null 时无限，更新时 -1 表示清除截止时间，给定截止时间必须大于开始时间。购买窗口 `[startTime,endTime)`。
 
-### 2.6 获取用户信息
-- **接口**: `GET /api/v1/user/{userId}`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 获取是否成功 |
-  | `data` | Object | 包含 `nickname`字符串, `description`字符串, `address`字符串列表 |
+ItemView：`{id,name,description,price,stock,status,owner,startTime,endTime,shipmentCount,version}`。修改绝对剩余库存必须发送**最近一次读取的 version**；版本陈旧或缺失为409，前端刷新后重新决定库存。下单、回补、发货和商品更新都会更新版本。剩余库存加尚可取消的预留库存不得超出 INT 容量。下架不自动取消已存在订单。商品不物理删除，显式修改 `status:-1` 关闭销售。
 
-### 2.7 修改用户信息
-- **接口**: `POST /api/v1/user/{userId}`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `nickname` | String | 否 | 昵称 |
-  | `description` | String | 否 | 描述 |
-  | `address` | String | 否 | 收货地址 |
-  | `role` | Integer | 否 | 0 普通用户，1 或 >1 管理员，-1 或 <-1 封禁用户 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 修改是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
-- **说明**：仅管理员可修改非自己的用户角色，如果没有token以外的任何参数表示删除（仅管理员可删除非管理员用户，删除时必须没有进行中订单）。
+## 订单
 
----
+| 方法与路径 | 请求 | 说明 |
+| --- | --- | --- |
+| GET `/order` | page,size,user?,owner?,item?,status? | 买家/卖家只能查与自己有关的订单，管理员全局 |
+| GET `/order/{id}` | 无 | 买家/卖家/管理员 |
+| POST `/order` | `{itemId,quantity,address}` + `Idempotency-Key` 请求头 | 创建待支付订单；`item` 为 itemId 的兼容别名，不要同时发送两者 |
+| POST `/order/{id}/pay` | 无请求体 | 仅买家模拟支付，待支付 → 待发货 |
+| POST `/order/{id}/ship` | 无请求体 | 卖家/管理员，待发货 → 待收货 |
+| POST `/order/{id}/receive` | 无请求体 | 买家/管理员，待收货 → 已完成 |
+| POST `/order/{id}/cancel` | 无请求体 | 买家/管理员取消待支付；卖家/管理员取消待发货并模拟退款 |
+| POST `/order/{id}/address` | `{address}` | 买家/管理员，只能待发货时改地址 |
+| POST `/order/{id}` | `{address}` | 上一接口的兼容路径；禁止通用 status/时间更新 |
 
-## 3. 商品（团购）模块 (Item API)
+quantity 必须1..2147483647整数；address 非空白且最多255。买卖双方不能相同，买家/卖家不能封禁，商品必须可售且库存足够。卖家、买家、价格、total、状态、全部时间由后端确定，发送这些多余字段为400。
 
-> 说明：在社区团购体系中，“商品”即用户发起的团购活动。每个团购活动包含商品信息、价格、库存、团购状态等。
+幂等键：1..64位字母、数字、下划线或短横线，按买家隔离，数据库唯一 `(user_id,idempotency_key)`。相同键及完全相同的 itemId、quantity、address 返回原订单的**当前结果**（包括已取消）；不同参数409。键在交易保留期内不删除，重试不再次扣库存。一个新购买意图应使用新键。
 
-### 3.1 分页查询团购ID列表
-- **接口**: `GET /api/v1/item`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `page` | Integer | 否 | 页码 (默认0) |
-  | `size` | Integer | 否 | 每页数量（默认100，0表示不分页） |
-  | `keyword` | String | 否 | 搜索关键词（匹配商品名称/描述） |
-  | `status` | Integer | 团购状态（为负下架，>=0上架已出货n次） |
-  | `owner` | String | 否 | 按发起人用户ID筛选 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 获取是否成功 |
-  | `items` | List(Object) | 团购 ID 列表（整数数组） |
-  | `count` | Integer | 符合条件的总记录数（用于分页） |
+OrderView：`{id,itemId,user,owner,quantity,price,total,address,status,createTime,payTime,shipTime,receiptTime,closeTime,expiresAt,refundStatus}`。单价和total是下单快照；total 为64位整数。未付款时，卖家的响应 address 为null；买家和管理员可看。支付后卖家取得履约地址，其他用户不能查看订单。卖家不会取得买家的用户资料地址。
 
-### 3.2 创建新团购
-- **接口**: `POST /api/v1/item`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `name` | String | 是 | 团购商品名称 |
-  | `description` | String | 否 | 商品详情描述 |
-  | `price` | Integer | 是 | 单价（单位：分，>=0） |
-  | `stock` | Integer | 是 | 团购库存总量（>=0） |
-  | `status` | Integer | 团购状态（下架，上架已出货n次） |
-  | `startTime` | Integer | 否 | 团购开始时间戳（为空为负默认现在） |
-  | `endTime` | Integer | 否 | 团购结束时间（为空为负永不结束） |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 创建是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
-  | `item` | Integer | 成功时返回新建团购的 ID |
+状态：0待支付、1待发货、2待收货、3完成、-1取消。唯一正常链为 `0→1→2→3`；允许 `0→-1` 和 `1→-1`（后一种由卖家/管理员操作，`refundStatus=SIMULATED_REFUNDED`），其余拒绝。支付/发货/收货在其目标状态重复请求返回原结果；取消在-1重复返回原结果；跨越后续状态的旧动作409。每次仍检查操作者，不能用重复动作绕过权限。
 
-### 3.3 获取团购详情
-- **接口**: `GET /api/v1/item/{id}`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `id` | Integer | 是 | 团购 ID（路径参数） |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 获取是否成功 |
-  | `data` | Object | 团购详情对象，包含下方字段 |
+创建时间、截止时间、支付/发货/收货/关闭时间全部由后端写入。到截止秒即禁止支付，定时任务关闭并只回补一次；管理员也不能强行支付。已发货不支持取消。完成及取消的记录保留，未提供删除端点。
 
-  `data` 对象字段：
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `id` | Integer | 团购 ID |
-  | `name` | String | 商品名称 |
-  | `description` | String | 商品描述 |
-  | `price` | Integer | 单价（分） |
-  | `stock` | Integer | 剩余库存 |
-  | `status` | Integer | 团购状态（下架，上架已出货n次） |
-  | `owner` | String | 发起人用户ID |
-  | `startTime` | Integer | 开始时间 |
-  | `endTime` | Integer | 结束时间 |
+## 平台统计
 
-### 3.4 管理团购（修改内容、状态更变、删除）
-- **接口**: `POST /api/v1/item/{id}`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `name` | String | 否 | 新商品名称 |
-  | `description` | String | 否 | 新描述 |
-  | `price` | Integer | 否 | 新单价（分） |
-  | `stock` | Integer | 否 | 新库存 |
-  | `status` | Integer | 团购状态（下架，上架已出货n次） |
-  | `startTime` | String | 否 | 新开始时间 |
-  | `endTime` | String | 否 | 新结束时间 |
-- **说明**：仅团购发起人本人或管理员可操作，如果没有token以外的任何参数表示删除团购。
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 操作是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
+`GET /stats` 仅管理员。data 为 `{userCount,itemCount,orderCount,totalRevenue,ongoingItemCount}`。交易额口径：状态1/2/3订单的 total 总和，含已付款未完成，排除未支付、取消及模拟退款。不是平台利润/抽佣。进行中团购要求上架且 `start<=now<end`（end无限除外），不按发货次数判断。
 
----
+## 前端必须适配的差异
 
-## 4. 订单模块 (Order API)
+1. 所有 token 改为 Bearer 请求头，401清理登录态；登录从 `data.token` 取令牌。响应统一取 data，不能再读顶层 item/order/items/count/token。
+2. 商品/订单创建返回完整 DTO，ID 分别为 `data.id`；列表是 `data.content` 对象数组，用户列表是字符串数组。订单输出字段统一 itemId（输入兼容 item）；价格从商品展示，不能提交买家/卖家/价格。
+3. 更新商品库存发送 version。status 的正数旧含义移到 shipmentCount，展示发货计数应读新字段。
+4. 下单生成并保存 Idempotency-Key，网络重试沿用。支付/发货/收货/取消调用显式操作路径；地址更新仅发送 address。
+5. 不再使用空请求隐式删除；不提供订单/账号/商品物理删除。封禁和下架分别调用显式接口。size=0 调用需改为分页。
+6. 本次不重写前端；旧前端需完成这些改动才能联调。
 
-### 4.1 获取订单ID列表
-- **接口**: `GET /api/v1/order`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `page` | Integer | 否 | 页码 (默认0) |
-  | `size` | Integer | 否 | 每页数量（默认100，0表示不分页） |
-  | `user` | String | 否 | 按订单所有者id筛选 |
-  | `item` | Integer | 否 | 按订单商品id筛选 |
-  | `owner` | String | 否 | 按订单商品所有者id筛选 |
-  | `status` | Integer | 否 | 订单状态筛选：0待支付，1待发货，2待收货，3已完成，-1（或其他任何值）已取消 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 获取是否成功 |
-  | `data` | Array | 订单 ID 列表（整数数组） |
-  | `count` | Integer | 符合条件的总记录数 |
+## 企业增量：阶段3商品快照
 
-### 4.2 创建订单
-- **接口**: `POST /api/v1/order`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `item` | Integer | 是 | 团购id |
-  | `quantity` | Integer | 是 | 购买数量（正整数） |
-  | `address` | String | 是 | 收货地址 |
-- **业务规则**：
-  - 下单流程：校验库存 → 创建订单 → 锁定库存 → 支付（模拟，始终成功）。
-  - 团购必须处于 status>=0 且 当前时间在团购可用时间内才可下单。
-  - 若库存不足，返回失败。
-  - 创建成功后订单状态为 `0`，需要支付（仅模拟）
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 创建是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
-  | `order` | Integer | 成功时返回新建订单的 ID |
+OrderView新增itemName、itemDescription、snapshotSource（AT_CREATION/LEGACY_UNKNOWN）。新订单保存创建时名称/描述，不随商品修改或下架变化；旧订单没有这类历史记录，返回null和LEGACY_UNKNOWN，禁止前端将当前商品名当成交快照。旧字段与路径保留，幂等重试仍返回同一订单当前结果。
 
-### 4.3 获取订单详情
-- **接口**: `GET /api/v1/order/{id}`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `id` | Integer | 是 | 订单 ID（路径参数） |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 获取是否成功 |
-  | `data` | Object | 订单详情对象，包含下方字段 |
+## 企业增量：分类、购物车和拆单
 
-  `data` 对象字段：
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `id` | Integer | 订单 ID |
-  | `item` | Integer | 团购 ID |
-  | `user` | String | 买家用户ID |
-  | `owner` | String | 团购发起人用户ID |
-  | `quantity` | Integer | 购买数量 |
-  | `price` | Integer | 成交时单价（分） |
-  | `address` | String | 收货地址 |
-  | `status` | Integer | 订单状态 |
-  | `createTime` | Integer | 下单时间 |
-  | `payTime` | Integer | 支付时间 |
-  | `shipTime` | Integer | 发货时间 |
-  | `receiptTime` | Integer | 收货时间 |
-  | `closeTime` | Integer | 关闭时间 |
+- `GET /categories?page&size`：分页分类；`POST /categories {name}`仅ADMIN；`PUT /item/{id}/category {categoryId}`仅发起人/ADMIN。商品列表新增category条件，与keyword/owner/status共同生效，ItemView新增categoryId。
+- `GET /cart`：仅当前用户，返回`{version,lines:[{itemId,quantity,selected,name,price,stock,status,startTime,endTime}]}`。最多50种商品。
+- `PUT /cart/{itemId} {quantity,selected}`：增/改（数量为正INT）；`DELETE /cart/{itemId}`：显式删除自己的购物车行，重复删除幂等。买家身份不能通过请求指定。
+- `POST /checkout`：Bearer与Idempotency-Key，体`{address,cartVersion,expectedTotal?}`。结算全部已勾选行，cartVersion必须来自GET；expectedTotal用于确认价格变化，实际金额始终读取数据库，不一致409。
+- 一次结算按卖家生成一个订单，每单有多商品明细，同一事务全部成功或全部失败。只在成功时删除已勾选行并增加购物车version。相同键/同参数重试返回原批次，不受成功后购物车清空影响；改参数409。重试必须沿用原cartVersion；新购买意图使用新键并刷新购物车。
+- 返回`{id,total,orders:[{order:OrderView,lines:[{itemId,quantity,price,total,itemName,itemDescription,snapshotSource}]}]}`。`GET /checkout/{id}`仅买家/ADMIN，卖家不能看整个跨卖家批次。`GET /order/{id}/details`按原订单参与人规则读取一张订单及明细。
+- 兼容旧单商品入口`POST /order`，也会写一条明细。多商品订单的主表itemId/price/itemName为第一明细的兼容摘要，quantity为数量合计、total为明细金额总和；**前端对多商品单必须展示lines，不得用price*quantity推算总额**。所有操作和item筛选覆盖全部明细，非主商品也可查询到订单。
 
-### 4.4 修改/更新订单信息
-- **接口**: `POST /api/v1/order/{id}`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 令牌 |
-  | `address` | String | 否 | 新的收货地址 |
-  | `status` | Integer | 否 | 新状态 |
-- **业务规则**：
-  - 如果没有token以外的任何参数表示删除订单
-  - 买家对自己的订单：可取消订单（仅当订单状态为0）、可付款（仅当订单状态为0，仅模拟无实际操作，始终成功）、修改地址（仅当订单状态为1）、可收货（仅当订单状态为2）。
-  - 卖家对自己商品的订单：可发货（仅当订单状态为1）、可取消订单并退款（仅当订单状态为1，退款仅模拟无实际操作）。
-  - 管理员对所有订单：可取消订单（仅当订单状态为0）、修改地址（仅当订单状态为1）、可发货（仅当订单状态为1）、可收货（仅当订单状态为2）、可删除订单（仅当订单状态为-1或3）
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 修改是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
+## 企业增量：模拟支付、退款、评价与内部结算
 
----
+本节是隔离SIMULATOR契约，**不是任何真实支付平台沙箱验收**。正式deploy配置禁用模拟渠道。全站金额为整数分：单笔/批次Long边界精确检查，平台跨订单聚合使用BigInteger避免Long溢出。前端涉及大金额应使用能保留整数精度的JSON解析/BigInt方案，不能用JS浮点Number计算账务。
 
-## 5. 平台管理模块 (Admin API)
+| 路径 | 权限与规则 |
+| --- | --- |
+| POST `/payments {orderId}` | 仅买家，创建或返回同订单唯一PENDING记录；价格、商户、金额由服务端决定 |
+| GET `/payments/{id}` | 买家/卖家/ADMIN；返回id/orderId/amount/merchant/channel/status/providerReference/服务端时间 |
+| POST `/payments/{id}/simulate` | 仅买家，后端调用模拟渠道并完成合法状态转移，客户端不指定成功或时间 |
+| POST `/payments/{id}/query` | 参与人/ADMIN主动查询模拟渠道持久记录，校验金额/商户后补偿遗漏通知 |
+| POST `/order/{id}/refunds {reason}` | 仅买家；每单一次全额申请，同原因重试返回原申请，冲突原因409 |
+| GET `/refunds/{id}` | 参与人/ADMIN，包含状态、金额、attempts和服务端时间 |
+| POST `/refunds/{id}/approve`、`/reject` | 卖家/ADMIN审核，不能由买家批准；批准后发起渠道退款 |
+| POST `/refunds/{id}/retry` | 卖家/ADMIN重试FAILED，沿用同退款ID作为渠道幂等键，不新建退款 |
+| POST `/order/{id}/reviews {itemId,rating,comment}` | 仅买家，已完成且未退款/争议；每订单每商品一条，rating1..5、comment最多1000且纯文本 |
+| GET `/item/{id}/reviews?page&size` | 已认证用户，稳定分页，不含地址等私密字段 |
+| POST `/settlements {seller?}` + Idempotency-Key | 卖家结算自己，ADMIN可选seller；同卖家同键返回原批次 |
+| GET `/settlements/{id}` | 对应卖家/ADMIN；批次netAmount与逐笔SALE/REFUND明细 |
 
-> 说明：以下接口仅管理员可调用。
+兼容`POST /order/{id}/pay`，也会创建独立支付记录。所有真实资金动作均不存在；渠道名必须显示SIMULATOR。模拟渠道记录持久化于专用表，不使用仅进程内Map冒充重启后查询。失败支付仍保留原状态，客户端以订单/支付status判断结果。
 
-### 5.1 管理员查看全局统计
-- **接口**: `GET /api/v1/stats`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 管理员令牌 |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 获取是否成功 |
-  | `data` | Object | 统计数据对象 |
+退款状态REQUESTED→REJECTED或APPROVED→SUCCEEDED/FAILED；FAILED可重试，通知可补偿已批准结果。拒绝后本版不支持重新提交新申请，不支持部分金额退款或真实退货物流。全额成功后订单关闭为-1，refundedTotal记实退。待发货退款才回补全部明细库存；已发货/完成的售后不自动回补，避免把未回仓货物再次出售。申请/失败处理中暂停发货/收货；重复批准/通知不再回补或记账。
 
-  `data` 对象字段：
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `userCount` | Integer | 用户总数 |
-  | `itemCount` | Integer | 团购总数 |
-  | `orderCount` | Integer | 订单总数 |
-  | `totalRevenue` | Number | 平台总交易额（分） |
-  | `ongoingItemCount` | Integer | 进行中的团购数 |
+旧卖家取消已支付待发货订单会生成并执行一条全额模拟退款；失败保留原订单并从退款接口重试。历史已支付订单如果缺支付记录，拒绝自动退款/结算，需人工对账，不能迁移时伪造支付凭据。
 
-### 5.2 管理员修改用户角色
-- **接口**: `POST /api/v1/user/{userId}/role`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 管理员令牌 |
-  | `user` | String | 是 | 目标用户ID（路径参数） |
-  | `role` | String | 是 | 新角色：`USER` / `ADMIN` |
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 修改是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
+内部结算仅处理已完成、未退款、无处理中售后且有成功支付记录的订单，不代表银行打款。每订单SALE唯一；已结算后退款生成唯一负数REFUND调整，下一批可能为负，表示应扣回账款。退款与结算共享数据库账务锁，所有相关路径先取得账务锁再取得商品/订单/外键隐式锁。每次最多纳入100张新订单/200条待结算明细；超过Long批次净额容量时保留剩余到下一批，不截断溢出。
 
-### 5.3 管理员封禁用户
-- **接口**: `POST /api/v1/user/{userId}/ban`
-- **请求参数**:
-  | 参数名 | 类型 | 必填 | 说明 |
-  | :--- | :--- | :--- | :--- |
-  | `token` | String | 是 | 管理员令牌 |
-  | `user` | String | 是 | 目标用户ID（路径参数） |
-- **业务规则**：封禁的用户不能下单，不能发起团购，进行中的订单不变。
-- **响应数据**:
-  | 字段 | 类型 | 说明 |
-  | :--- | :--- | :--- |
-  | `success` | boolean | 是否成功 |
-  | `message` | String | 成功时为空字符串，失败时为原因 |
+评价与直接下单/购物车结算统一按当前用户→商品ID升序→订单取得锁；评价插入的用户外键检查不能反向等待用户锁。评价入口在事务内复查用户未封禁。此并发修复不改变请求、响应或前端契约；finance_mutex保持原账务顺序。
 
----
+统计保留totalRevenue为状态1/2/3订单总额，新增grossPaidAmount（成功支付累计）、refundAmount（成功退款累计）、netPaidAmount（前两者之差）及unreconciledPaidOrderCount（缺支付凭据的历史已付订单数）。这些不是利润或抽佣，内部结算不改变平台支付净额。
 
-## 6. 错误码约定
+### 模拟渠道通知（无需用户Bearer，但必须有效签名）
 
-| 错误码 | 含义 | 说明 |
-| :--- | :--- | :--- |
-| `200` | 成功 | 业务处理成功 |
-| `400` | 参数错误 | 请求参数缺失或格式不正确 |
-| `403` | 无权限 | 令牌缺失或当前用户无权执行该操作 |
-| `404` | 资源不存在 | 请求的用户/团购/订单不存在 |
-| `409` | 业务冲突 | 如库存不足、状态不允许该操作等 |
-| `500` | 服务器内部错误 | 系统异常，`message` 中携带堆栈信息 |
+`POST /payments/simulator/notify`、`POST /refunds/simulator/notify`只在显式启用模拟模式时注册。JSON为`{id,eventId,amount,merchant,status}`，status=SUCCEEDED或FAILED；头`X-Channel-Signature`为64位小写hex HMAC-SHA256。签名原文按字段规范化为`id|eventId|amount|merchant|status`，密钥为独立PAYMENT_SIM_SECRET的Base64解码随机字节，不能复用真实平台凭据。
 
----
+先验签，再校验本地记录的商户/金额、批准状态与事件唯一性。同eventId相同参数重复确认，冲突409。支付和退款各自事件空间独立。过期/已取消未支付订单收到成功通知返回409待对账，不能复活订单；本版没有真实晚到资金自动退回能力，接真实渠道前必须实现相应补偿。没有外部凭据，因此不声称真实渠道通知/网络故障已验收。
+
+## 可靠性新增契约
+
+响应在原success/message/data之外增加code（成功OK）和32位traceId，响应头X-Trace-Id一致；客户端不要提交身份/状态/服务端时间。429为RATE_LIMITED并带Retry-After。CORS允许源必须环境明确列出，默认不开放，Bearer不使用Cookie。
+
+ADMIN `GET /audit?page=0&size=20`：分页`{id,createTime,traceId,actorHash,action,resourceHash,outcome,httpStatus}`，哈希字段不是明文账号或地址。Actuator独立沿用标准响应而非Api envelope，全部要求ADMIN；自动OpenAPI也为标准OpenAPI格式。失败CORS预检由框架403拒绝，不含业务对象。监控与限制见[运行说明](operations.md)。
+
+前端增量适配：购物车保留version并按卖家展示checkout返回的orders/lines；幂等重试沿用原cartVersion和幂等键。支付页显示SIMULATOR且查询独立支付记录，不由客户端提交成功标志；售后和结算分别展示独立记录、FAILED重试及负数调整。大金额使用保留整数精度的JSON解析，不能用Number累加超过2^53的账务。401重新登录、409刷新业务数据、429按Retry-After重试，排障向维护者提供traceId；不展示服务器内部异常。

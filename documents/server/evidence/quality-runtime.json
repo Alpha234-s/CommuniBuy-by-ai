@@ -1,0 +1,24 @@
+{
+  "code_commit": "c1bfa797fc8360667046df703e4079ae78c16a30",
+  "environment": "Windows JDK21, native task-owned MySQL8.4.6, communibuy_demo on loopback33317",
+  "jar_sha256": "75b9bbaefdb58a44024f9db157dd5eb17eba577e99d3aa0b55e7e8e3d3086a71",
+  "jar_start_confirmed": true,
+  "demo_command": "python scripts/commerce-demo.py --base-url http://127.0.0.1:18083/api/v1 --wait-seconds 90",
+  "demo_exit_code": 0,
+  "demo_passes": [
+    "prepare ordinary accounts",
+    "Unicode DTO boundaries",
+    "cart atomic cross-seller checkout and retry",
+    "SIMULATOR pay, ship, receive, review, internal settlement",
+    "refund approval and negative adjustment",
+    "403 refusals, cancellation restock once, logout401"
+  ],
+  "cleanup_log_counts": [
+    9
+  ],
+  "limits": [
+    "simulator only, no real payment",
+    "no native Docker; container acceptance belongs to current Linux CI",
+    "not a new production deployment or backup/restore drill"
+  ]
+}

@@ -35,9 +35,11 @@ import org.springframework.test.web.servlet.*;
       "app.payment.simulator-secret=MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
       "app.jwt.ttl-seconds=3600",
       "app.orders.scheduling-enabled=false",
+      "app.auth.revocation-cleanup.enabled=false",
       "app.auth.legacy-password-login=true"
     })
 @AutoConfigureMockMvc
+@Tag("mysql")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Import(IntegrationSupport.TimeConfig.class)
 abstract class IntegrationSupport {

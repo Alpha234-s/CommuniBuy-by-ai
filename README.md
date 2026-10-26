@@ -11,6 +11,7 @@
 已实现认证授权、分类搜索、购物车原子拆单、库存预留、幂等下单、独立模拟支付/退款、发货收货、售后评价和内部结算，以及traceId、审计、限流、受保护指标、MySQL迁移与集成测试。支付为隔离SIMULATOR，没有真实平台沙箱或银行打款。前端需按新契约联调，本次未修改 `webui/`。
 
 - [阶段状态与真实验证证据](documents/server/progress.md)
+- [2026-10-24后端质量加固与分层验收](documents/server/quality-hardening.md)
 - [部署、演示、备份、恢复与回退命令](documents/server/deployment.md)
 - [权限矩阵、ER图和状态](documents/server/model-and-permissions.md)
 - [最终验收矩阵](documents/server/final-acceptance.md)、[AI开发记录](documents/server/ai-development-log.md)

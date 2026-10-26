@@ -106,3 +106,6 @@ V5应用与V4及更早写版本不具备账务语义回退兼容；只能回滚�
 ## 企业增量V6
 
 追加audit_events（trace、哈希化操作者/资源、动作、结果、服务端时间）及查询索引；不是从历史日志伪造审计记录。现有数据不清除，V1～V5不改写。成功审计失败会回滚同一业务事务。新服务依赖V6，回滚只能到理解V6及V5/V4业务语义的兼容二进制。独立复制库与空库V1→V6迁移已经测试，具体备份恢复演练见部署验收。
+## 2026-10-24 吊销清理说明
+
+本轮不新增/改写Flyway迁移：V2已建立`ix_blacklist_expiry(expire_at)`。定时任务按`expire_at <= 当前UTC秒`、`ORDER BY expire_at, token_hash LIMIT batch`删除，一批独立READ_COMMITTED事务；InnoDB二级索引含主键提供排序。JWT的exp必须严格大于当前时刻，故删除过期吊销不会恢复令牌效力。正式升级正常执行Flyway validate，无手工清库步骤；原有数据/归属/旧密码迁移方法仍按原章节，不变更账务表或finance_mutex。

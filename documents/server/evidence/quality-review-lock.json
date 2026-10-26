@@ -1,0 +1,44 @@
+{
+  "baseline": "399df3de112f69d0bb51c823735a96004865f3e1",
+  "database": "native MySQL 8.4.6, disposable schemas, Windows JDK21",
+  "test": "ReviewLockIntegrationTest",
+  "schedule": "purchase holds buyer row; review either obtains item/order (before fix) or requests buyer first (after fix); purchase then attempts item; no sleeps",
+  "before": {
+    "tests": 2,
+    "failures": 2,
+    "cases": [
+      {
+        "case": "review versus purchase, cart=false",
+        "mysql_deadlock_1213_40001": true,
+        "assertion_values": [
+          [
+            "2L",
+            "1L"
+          ],
+          [
+            "1",
+            "2"
+          ]
+        ]
+      },
+      {
+        "case": "review versus purchase, cart=true",
+        "mysql_deadlock_1213_40001": true,
+        "assertion_values": [
+          [
+            "2L",
+            "1L"
+          ],
+          [
+            "1",
+            "2"
+          ],
+          [
+            "1L",
+            "0L"
+          ]
+        ]
+      }
+    ]
+  }
+}

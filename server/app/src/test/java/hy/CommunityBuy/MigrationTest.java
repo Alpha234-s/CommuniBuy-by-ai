@@ -6,6 +6,7 @@ import java.sql.*;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 
+@org.junit.jupiter.api.Tag("mysql")
 class MigrationTest {
   static final TestDatabase.Connection db = TestDatabase.connect(true);
 

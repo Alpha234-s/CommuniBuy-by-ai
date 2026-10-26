@@ -1,0 +1,124 @@
+{
+  "environment": {
+    "os": "Windows",
+    "jdk": "21.0.8",
+    "gradle": "8.14.3",
+    "mysql": "8.4.6 native, isolated task database"
+  },
+  "layers": {
+    "test": [
+      {
+        "name": "hy.CommunityBuy.BusinessRulesTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.RevocationCleanupTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.SafeDiagnosticsTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.TestDatabasePolicyTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "integrationTest": [
+      {
+        "name": "hy.CommunityBuy.AuthPolicyTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.BackendIntegrationTest",
+        "tests": 39,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.CommerceIntegrationTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.FinanceIntegrationTest",
+        "tests": 18,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.MigrationTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.ReliabilityIntegrationTest",
+        "tests": 8,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.ReviewLockIntegrationTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "hy.CommunityBuy.RevocationCleanupIntegrationTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ]
+  },
+  "coverage": {
+    "INSTRUCTION": {
+      "missed": 699,
+      "covered": 7082
+    },
+    "BRANCH": {
+      "missed": 168,
+      "covered": 503
+    },
+    "LINE": {
+      "missed": 108,
+      "covered": 1289
+    },
+    "COMPLEXITY": {
+      "missed": 206,
+      "covered": 417
+    },
+    "METHOD": {
+      "missed": 48,
+      "covered": 236
+    },
+    "CLASS": {
+      "missed": 8,
+      "covered": 74
+    }
+  }
+}

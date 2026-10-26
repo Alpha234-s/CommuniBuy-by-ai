@@ -1,6 +1,7 @@
 package hy.CommunityBuy.exception;
 
 import hy.CommunityBuy.dto.Api;
+import hy.CommunityBuy.infrastructure.SafeDiagnostics;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.*;
 import org.springframework.dao.*;
@@ -54,6 +55,10 @@ public class ApiErrors {
 
   @ExceptionHandler({DataIntegrityViolationException.class, ConcurrencyFailureException.class})
   ResponseEntity<Api<Void>> conflict(Exception e) {
+    log.warn(
+        "event=api.conflict traceId={} diagnostic={}",
+        MDC.get("traceId"),
+        SafeDiagnostics.describe(e));
     return ResponseEntity.status(409)
         .body(Api.error("CONFLICT", "Data conflict; refresh and retry"));
   }
@@ -70,7 +75,10 @@ public class ApiErrors {
 
   @ExceptionHandler(Exception.class)
   ResponseEntity<Api<Void>> unexpected(Exception e) {
-    log.error("Unhandled API failure ({})", e.getClass().getSimpleName());
+    log.error(
+        "event=api.unexpected traceId={} diagnostic={}",
+        MDC.get("traceId"),
+        SafeDiagnostics.describe(e));
     return ResponseEntity.internalServerError()
         .body(Api.error("INTERNAL_ERROR", "Internal server error"));
   }

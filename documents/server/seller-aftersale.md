@@ -22,4 +22,16 @@
 4. 买家售后列表使用 `scope=buyer`，管理员全局管理使用 `scope=all`。
 5. 申请进度取 refunds 的真实状态，不用订单现有 refundStatus（结算结果）推测是否待审核。全部编号/金额继续使用现有无损JSON解析。
 
-验证结果将在提交前补齐。当前云端没有Docker或JDK21，不能以历史CI结果冒充本任务验收。
+## 实际验证（2026-10-27）
+
+代码提交 `ee22d7fb4c86e5dcdaf35f21eb8a99806912872f` 的 [Actions 40499106910](https://github.com/Alpha234-s/CommuniBuy-by-ai/actions/runs/40499106910) 已成功：
+
+- Windows JDK21 主源码及测试源码编译通过。
+- Linux `./gradlew clean build --no-daemon --no-build-cache` 通过，包含格式检查。
+- 发现脚本确认单测16项、真实MySQL集成测试89项，共105项，失败/错误/跳过均为0；新增售后5项全部执行通过。
+- 可执行JAR与Docker Compose应用/MySQL/Nginx代理下的现有交易演示均通过；Nginx配置检查通过，应用容器为uid=10001。
+- 新接口的发现/详情/审核闭环由真实MySQL的HTTP回归验证；部署演示沿用现有脚本，不声称前端已接入或已新增实时通知。
+
+本地环境缺Docker/JDK21且Gradle下载网络不可达，因此上述验收在本任务提交的远程CI中执行。首次提交的格式检查发现排版差异，按项目格式化输出修正后重新完整验收，未删测试或降低门槛。
+
+提交入口：[个人fork Draft PR #3](https://github.com/Alpha234-s/CommuniBuy-by-ai/pull/3)，使用团队main同一基线。团队库创建PR返回集成403，尚未向团队main合并；需维护者独立评审并将分支引入团队仓库。最后补记仅更新验证文档，不改变已测业务源码。

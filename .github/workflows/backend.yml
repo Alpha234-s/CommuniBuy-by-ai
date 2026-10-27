@@ -35,6 +35,8 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Temporary formatting verification (removed after applying formatter output)
+        run: ./gradlew :app:formatJava --no-daemon && git diff --exit-code -- app/src
       - run: ./gradlew clean build --no-daemon --no-build-cache
       - name: Require actual test discovery
         run: python3 scripts/check-tests.py

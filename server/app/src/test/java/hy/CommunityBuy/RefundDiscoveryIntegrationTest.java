@@ -35,8 +35,9 @@ class RefundDiscoveryIntegrationTest extends IntegrationSupport {
 
     // The seller gets the identifier only from its own inbox, not the buyer's response.
     var inbox =
-        data(request("seller", "GET", "/api/v1/refunds?status=REQUESTED", null)
-            .andExpect(status().isOk()));
+        data(
+            request("seller", "GET", "/api/v1/refunds?status=REQUESTED", null)
+                .andExpect(status().isOk()));
     assertThat(inbox.path("count").asLong()).isEqualTo(1);
     var entry = inbox.path("content").get(0);
     String refundId = entry.path("id").asText();
@@ -119,15 +120,13 @@ class RefundDiscoveryIntegrationTest extends IntegrationSupport {
     var r = finance.request(buyer, paidFor(buyer, seller, "private"), "Private reason");
     request(null, "GET", "/api/v1/refunds", null).andExpect(status().isUnauthorized());
     for (String user : List.of("buyer", "seller", "outsider"))
-      request(user, "GET", "/api/v1/refunds?scope=all", null)
-          .andExpect(status().isForbidden());
+      request(user, "GET", "/api/v1/refunds?scope=all", null).andExpect(status().isForbidden());
     request("outsider", "GET", "/api/v1/refunds", null)
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.count").value(0));
     request("outsider", "GET", "/api/v1/order/" + r.orderId() + "/refunds", null)
         .andExpect(status().isForbidden());
-    request("outsider", "GET", "/api/v1/refunds/" + r.id(), null)
-        .andExpect(status().isForbidden());
+    request("outsider", "GET", "/api/v1/refunds/" + r.id(), null).andExpect(status().isForbidden());
     request("outsider", "POST", "/api/v1/refunds/" + r.id() + "/approve", null)
         .andExpect(status().isForbidden());
     request("buyer", "POST", "/api/v1/refunds/" + r.id() + "/approve", null)
@@ -148,25 +147,31 @@ class RefundDiscoveryIntegrationTest extends IntegrationSupport {
     long id = paidFor(buyer, seller, "no-refund");
     for (String user : List.of("buyer", "seller", "admin")) {
       var response =
-          data(request(user, "GET", "/api/v1/order/" + id + "/refunds", null)
-              .andExpect(status().isOk()));
+          data(
+              request(user, "GET", "/api/v1/order/" + id + "/refunds", null)
+                  .andExpect(status().isOk()));
       assertThat(response.isNull()).isTrue();
     }
     request("outsider", "GET", "/api/v1/order/" + id + "/refunds", null)
         .andExpect(status().isForbidden());
     request("buyer", "GET", "/api/v1/order/9223372036854775807/refunds", null)
         .andExpect(status().isNotFound());
-    request("buyer", "GET", "/api/v1/order/0/refunds", null)
-        .andExpect(status().isBadRequest());
+    request("buyer", "GET", "/api/v1/order/0/refunds", null).andExpect(status().isBadRequest());
   }
 
   @Test
   void invalidScopeStatusOrderAndPaginationAreRejected() throws Exception {
     for (String query :
         List.of(
-            "scope=outsider", "status=UNKNOWN", "orderId=0", "orderId=-1", "orderId=abc",
-            "page=-1", "page=1000001", "size=0", "size=101"))
-      request("seller", "GET", "/api/v1/refunds?" + query, null)
-          .andExpect(status().isBadRequest());
+            "scope=outsider",
+            "status=UNKNOWN",
+            "orderId=0",
+            "orderId=-1",
+            "orderId=abc",
+            "page=-1",
+            "page=1000001",
+            "size=0",
+            "size=101"))
+      request("seller", "GET", "/api/v1/refunds?" + query, null).andExpect(status().isBadRequest());
   }
 }

@@ -78,8 +78,7 @@ public class FinanceService {
     }
     String from = " from refunds r join orders o on o.id=r.order_id";
     if (!conditions.isEmpty()) from += " where " + String.join(" and ", conditions);
-    long count =
-        jdbc.queryForObject("select count(*)" + from, Long.class, parameters.toArray());
+    long count = jdbc.queryForObject("select count(*)" + from, Long.class, parameters.toArray());
     parameters.add(size);
     parameters.add((long) page * size);
     var content =
@@ -107,8 +106,7 @@ public class FinanceService {
   public Refund refundForOrder(Actor a, long orderId) {
     // Check the order even when no refund exists, so absence cannot bypass ownership checks.
     orders.get(a, orderId);
-    var ids =
-        jdbc.queryForList("select id from refunds where order_id=?", String.class, orderId);
+    var ids = jdbc.queryForList("select id from refunds where order_id=?", String.class, orderId);
     return ids.isEmpty() ? null : book.refund(ids.getFirst());
   }
 
